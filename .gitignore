@@ -1,0 +1,38 @@
+# Gradle and generated outputs
+.gradle/
+build/
+**/build/
+*.jar
+!releases/**/*.jar
+!releases/**/.gitkeep
+
+# IDEs and editor metadata
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Compiled classes and local scratch
+bin/
+out/
+*.class
+*.log
+logs/
+
+# Local development runs and server data
+run/
+server.properties
+world/
+world_*/
+usercache.json
+usernamecache.json
+ops.json
+whitelist.json
+banned-players.json
+banned-ips.json
+
+# OS files
+.DS_Store
+Thumbs.db
