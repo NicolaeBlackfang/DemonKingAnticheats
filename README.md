@@ -9,7 +9,7 @@ Choose the exact server version in the release's **Version** options (or the mat
 | Server version | Select this artifact | Status in this workspace |
 |---|---|---|
 | 1.21 | `DemonKingAntiCheats-mc1.21-<mod-version>.jar` | Not published |
-| 1.21.1 | `DemonKingAntiCheats-mc1.21.1-<mod-version>.jar` | Current source target; binary not published |
+| 1.21.1 | `DemonKingAntiCheats-mc1.21.1-1.0.0.jar` | Available in `releases/1.21.1/` |   
 | 1.21.2 | `DemonKingAntiCheats-mc1.21.2-<mod-version>.jar` | Not published |
 | 1.21.3 | `DemonKingAntiCheats-mc1.21.3-<mod-version>.jar` | Not published |
 | 1.21.4 | `DemonKingAntiCheats-mc1.21.4-<mod-version>.jar` | Not published |
