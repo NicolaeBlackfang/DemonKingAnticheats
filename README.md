@@ -35,6 +35,8 @@ Do not install a different version as a substitute. Version-specific binaries mu
 
 A complete template is in [`config/demonkinganticheats.json`](config/demonkinganticheats.json). Only five checks currently have executable logic: Flight, Speed, Reach, rapid attack cadence (Kill Aura pattern), and Fast Break. The other entries are reserved configuration switches and are inert. `BAN` currently disconnects the player; it does not write to a persistent ban list. Review thresholds in a private test server before enabling punitive actions.
 
+Maintainers compiling or updating a version should follow the [build and version maintenance guide](docs/maintainer_builds.md).
+
 ## Detection limits
 
 This is server-side software. It cannot inspect client rendering, so ESP, Chams, Tracers, Fullbright, and Breadcrumbs do not expose a reliable server-side detection signal. Several automation labels also overlap with legitimate player actions. The current five checks are representative heuristics, not a reliable detector for all 57 names in the supplied list. The source list contains 57 numbered entries despite the specification heading saying 56.
