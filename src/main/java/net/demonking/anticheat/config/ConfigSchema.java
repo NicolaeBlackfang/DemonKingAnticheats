@@ -9,7 +9,7 @@ import java.util.Map;
 
 /** Versioned, per-check JSON schema. Each check stores only settings meaningful to that module. */
 public final class ConfigSchema {
-    @SerializedName("config_version") public int configVersion = 2;
+    @SerializedName("config_version") public int configVersion = 3;
     @SerializedName("global_settings") public GlobalSettings globalSettings = new GlobalSettings();
     @SerializedName("punishment_matrix") public PunishmentMatrix punishmentMatrix = new PunishmentMatrix();
     public Map<String, JsonObject> checks = new LinkedHashMap<>();
@@ -18,10 +18,6 @@ public final class ConfigSchema {
         public boolean enabled = true;
         @SerializedName("debug_mode") public boolean debugMode = false;
         @SerializedName("decay_per_minute") public double decayPerMinute = 0.25;
-        @SerializedName("high_ping_grace_ms") public int highPingGraceMs = 250;
-        @SerializedName("high_jitter_grace_ms") public int highJitterGraceMs = 120;
-        @SerializedName("low_tps_grace_threshold") public double lowTpsGraceThreshold = 17.0;
-        @SerializedName("rubberband_before_punish") public int rubberbandBeforePunish = 2;
         @SerializedName("discord_webhook") public DiscordWebhook discordWebhook = new DiscordWebhook();
     }
 
@@ -80,16 +76,16 @@ public final class ConfigSchema {
 
     private static void tailored(ConfigSchema schema) {
         JsonObject aim = schema.checks.get("killaura");
-        aim.addProperty("strictness", 8); aim.addProperty("max_angle_delta", 45.0);
-        aim.addProperty("check_reach", true); aim.addProperty("max_reach", 3.05); aim.addProperty("auto_cancel", true);
+        aim.addProperty("strictness", 8); aim.addProperty("max_angle_delta", 60.0);
+        aim.addProperty("check_reach", true); aim.addProperty("max_reach", 3.2); aim.addProperty("auto_cancel", true);
         aim.addProperty("target_players", true); aim.addProperty("target_mobs", true); aim.addProperty("target_animals", true);
         add(schema, "jesus", "strictness", 6, "vertical_tolerance", 0.05, "require_movement_packet", true, "auto_cancel", true, "buffer_limit", 8);
         add(schema, "fastbreak", "strictness", 7, "buffer_limit", 10, "minimum_completion_ratio", 0.65, "auto_cancel", true);
         add(schema, "fastplace", "strictness", 5, "min_delay_ms", 50, "auto_cancel", true);
         add(schema, "scaffold", "strictness", 9, "check_air_place", true, "max_extension_reach", 4.5, "auto_cancel", true);
         add(schema, "inventorywalk", "strictness", 5, "max_reach", 3.05, "allow_rotation", false, "auto_cancel", true);
-        add(schema, "reach", "max_reach", 3.05, "ping_margin_per_ms", 0.0015, "max_ping_margin", 0.75, "auto_cancel", true);
-        add(schema, "speed", "base_horizontal_per_packet", 0.72, "ping_tolerance_scale", 0.0025, "buffer_limit", 8, "auto_cancel", false);
+        add(schema, "reach", "max_reach", 3.2, "auto_cancel", true);
+        add(schema, "speed", "base_horizontal_per_tick", 0.85, "buffer_limit", 8, "auto_cancel", false);
         add(schema, "flight", "hover_ticks", 45, "vertical_tolerance", 0.005, "buffer_limit", 8, "auto_cancel", false);
     }
 

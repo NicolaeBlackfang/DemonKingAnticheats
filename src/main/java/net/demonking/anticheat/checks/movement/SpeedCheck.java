@@ -8,18 +8,26 @@ import java.util.Optional;
 public final class SpeedCheck {
     private double x, z;
     private boolean initialized;
+    private long lastSampleNanos;
+    private long ignoreTimingUntilNanos;
 
     public Optional<String> check(ServerPlayer p, double allowedDistance) {
         double nx = p.getX(), nz = p.getZ();
+        long now = System.nanoTime();
         if (!initialized) {
             x = nx;
             z = nz;
+            lastSampleNanos = now;
             initialized = true;
             return Optional.empty();
         }
         double dx = nx - x, dz = nz - z;
         x = nx;
         z = nz;
+        long gap = now - lastSampleNanos;
+        lastSampleNanos = now;
+        if (gap > 250_000_000L) ignoreTimingUntilNanos = now + 750_000_000L;
+        if (now < ignoreTimingUntilNanos) return Optional.empty();
         boolean exempt = p.isPassenger() || p.isFallFlying() || p.onClimbable() || p.isInWater() || p.isInLava()
                 || p.isCreative() || p.isSpectator() || p.getAbilities().flying;
         if (exempt || p.isSleeping() || p.isDeadOrDying())

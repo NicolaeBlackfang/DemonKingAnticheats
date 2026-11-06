@@ -12,7 +12,6 @@ import net.demonking.anticheat.checks.world.FastPlaceCheck;
 import net.demonking.anticheat.checks.world.ScaffoldCheck;
 import net.demonking.anticheat.config.ConfigManager;
 import net.demonking.anticheat.config.ConfigSchema;
-import net.demonking.anticheat.lag.LagCompensationManager;
 import net.demonking.anticheat.model.PlayerProfile;
 import net.demonking.anticheat.model.ViolationTracker;
 import net.demonking.anticheat.punishment.NotificationHandler;
@@ -30,6 +29,7 @@ import java.util.UUID;
 
 /** Routes server events to isolated check modules and shared buffers/escalation. */
 public final class CheckManager {
+    private static final int UNRELIABLE_RTT_MS = 250;
     private static final String[] IMPLEMENTED = {"fastbreak", "fastplace", "flight", "speed", "reach", "killaura", "jesus", "scaffold", "inventorywalk"};
     private final ViolationTracker violations = new ViolationTracker();
     private final NotificationHandler notifications = new NotificationHandler();
@@ -40,7 +40,7 @@ public final class CheckManager {
     private final Map<UUID, JesusCheck> jesus = new HashMap<>();
     private final Map<UUID, FastBreakCheck> breaks = new HashMap<>();
     private final Map<UUID, FastPlaceCheck> places = new HashMap<>();
-    private final Map<UUID, LagCompensationManager> lag = new HashMap<>();
+    private final Map<UUID, Integer> lastMovementTick = new HashMap<>();
     private final KillAuraCheck killaura = new KillAuraCheck();
     private final ReachCheck reach = new ReachCheck();
     private final ScaffoldCheck scaffold = new ScaffoldCheck();
@@ -58,13 +58,14 @@ public final class CheckManager {
             flag(attacker, "inventorywalk", "attack while server container is open");
             return ConfigManager.get().bool("inventorywalk", "auto_cancel", true);
         }
-        int ping = Math.max(0, attacker.connection.latency());
-        int gracePing = ConfigManager.get().globalSettings.highPingGraceMs;
-        if (ConfigManager.get().isEnabled("killaura") && ping < gracePing * 2) {
+        // Combat geometry compares the current server snapshot to an older client action.
+        // Suppress geometry flags while either side has a delayed view of that snapshot.
+        int attackerPing = Math.max(0, attacker.connection.latency());
+        int targetPing = target instanceof ServerPlayer victim ? Math.max(0, victim.connection.latency()) : 0;
+        if (Math.max(attackerPing, targetPing) < UNRELIABLE_RTT_MS && ConfigManager.get().isEnabled("killaura")) {
             double reachSetting = ConfigManager.get().decimal("killaura", "max_reach", 3.05);
-            double reachMargin = Math.min(0.75, ping * ConfigManager.get().decimal("reach", "ping_margin_per_ms", 0.0015));
             Optional<String> aura = killaura.check(attacker, target,
-                    ConfigManager.get().decimal("killaura", "max_angle_delta", 45.0), reachSetting + reachMargin,
+                    ConfigManager.get().decimal("killaura", "max_angle_delta", 60.0), reachSetting,
                     ConfigManager.get().bool("killaura", "check_reach", true),
                     ConfigManager.get().bool("killaura", "target_players", true),
                     ConfigManager.get().bool("killaura", "target_mobs", true),
@@ -74,8 +75,8 @@ public final class CheckManager {
                 if (registered && ConfigManager.get().bool("killaura", "auto_cancel", true)) return true;
             }
         }
-        if (target instanceof ServerPlayer victim && ConfigManager.get().isEnabled("reach")) {
-            double maxReach = ConfigManager.get().decimal("reach", "max_reach", 3.05) + Math.min(0.75, ping * 0.0015);
+        if (target instanceof ServerPlayer victim && Math.max(attackerPing, targetPing) < UNRELIABLE_RTT_MS && ConfigManager.get().isEnabled("reach")) {
+            double maxReach = ConfigManager.get().decimal("reach", "max_reach", 3.2);
             Optional<String> reachViolation = reach.check(attacker, victim, maxReach);
             if (reachViolation.isPresent()) {
                 boolean registered = flag(attacker, "reach", reachViolation.get());
@@ -87,46 +88,36 @@ public final class CheckManager {
 
     public void onMovement(ServerPlayer player) {
         if (!active()) return;
-        ConfigSchema.GlobalSettings global = ConfigManager.get().globalSettings;
-        LagCompensationManager compensation = lag.computeIfAbsent(player.getUUID(), ignored -> new LagCompensationManager());
-        if (compensation.inGraceWindow(player, global.highPingGraceMs, global.highJitterGraceMs, global.lowTpsGraceThreshold)) {
-            if (player.onGround()) compensation.rememberSafePosition(player);
-            return;
-        }
-        Optional<String> violation = Optional.empty();
-        String checkId = "";
-        if (ConfigManager.get().isEnabled("flight")) {
-            violation = flights.computeIfAbsent(player.getUUID(), ignored -> new FlightCheck()).check(player,
+        // Movement packets can arrive in bursts. Evaluate stateful checks at most once
+        // per server player tick so packet cadence cannot inflate hover/surface counters.
+        int tick = player.tickCount;
+        Integer previousTick = lastMovementTick.put(player.getUUID(), tick);
+        if (previousTick != null && previousTick == tick) return;
+        Optional<String> flight = ConfigManager.get().isEnabled("flight")
+                ? flights.computeIfAbsent(player.getUUID(), ignored -> new FlightCheck()).check(player,
                     ConfigManager.get().integer("flight", "hover_ticks", 45),
-                    ConfigManager.get().decimal("flight", "vertical_tolerance", 0.005));
-            if (violation.isPresent()) checkId = "flight";
-        }
-        if (violation.isEmpty() && ConfigManager.get().isEnabled("speed")) {
-            double baseDistance = ConfigManager.get().decimal("speed", "base_horizontal_per_packet", 0.72);
-            double pingScale = ConfigManager.get().decimal("speed", "ping_tolerance_scale", 0.0025);
-            double tolerance = baseDistance + Math.max(0, player.connection.latency()) * pingScale
-                    + Math.min(0.25, compensation.currentJitterMillis() / 1000.0);
-            violation = speeds.computeIfAbsent(player.getUUID(), ignored -> new SpeedCheck()).check(player,
-                    tolerance);
-            if (violation.isPresent()) checkId = "speed";
-        }
-        if (violation.isEmpty() && ConfigManager.get().isEnabled("jesus")) {
-            violation = jesus.computeIfAbsent(player.getUUID(), ignored -> new JesusCheck()).check(player,
+                    ConfigManager.get().decimal("flight", "vertical_tolerance", 0.005))
+                : Optional.empty();
+        Optional<String> speed = ConfigManager.get().isEnabled("speed")
+                ? speeds.computeIfAbsent(player.getUUID(), ignored -> new SpeedCheck()).check(player,
+                    ConfigManager.get().decimal("speed", "base_horizontal_per_tick", 0.85))
+                : Optional.empty();
+        Optional<String> water = ConfigManager.get().isEnabled("jesus")
+                ? jesus.computeIfAbsent(player.getUUID(), ignored -> new JesusCheck()).check(player,
                     ConfigManager.get().decimal("jesus", "vertical_tolerance", 0.05),
-                    ConfigManager.get().bool("jesus", "require_movement_packet", true));
-            if (violation.isPresent()) checkId = "jesus";
-        }
+                    ConfigManager.get().bool("jesus", "require_movement_packet", true))
+                : Optional.empty();
+
+        Optional<String> violation = flight.isPresent() ? flight : speed.isPresent() ? speed : water;
+        String checkId = flight.isPresent() ? "flight" : speed.isPresent() ? "speed" : "jesus";
         if (violation.isPresent()) {
-            if (!compensation.correctBeforePunish(player, global.rubberbandBeforePunish)) flag(player, checkId, violation.get());
-            return;
+            flag(player, checkId, violation.get());
         }
-        compensation.accepted();
-        if (player.onGround()) compensation.rememberSafePosition(player);
     }
 
     public boolean onBlockBreak(ServerPlayer player, BlockPos pos, BlockState state) {
         if (!active() || !ConfigManager.get().isEnabled("fastbreak")) return true;
-        if (Math.max(0, player.connection.latency()) >= ConfigManager.get().globalSettings.highPingGraceMs) return true;
+        if (Math.max(0, player.connection.latency()) >= UNRELIABLE_RTT_MS) return true;
         Optional<String> result = breaks.computeIfAbsent(player.getUUID(), ignored -> new FastBreakCheck())
                 .check(player, pos, state, ConfigManager.get().decimal("fastbreak", "minimum_completion_ratio", 0.65));
         if (result.isEmpty()) return true;
@@ -141,9 +132,7 @@ public final class CheckManager {
             flag(player, "inventorywalk", "block interaction while server container is open");
             if (ConfigManager.get().bool("inventorywalk", "auto_cancel", true)) return true;
         }
-        int ping = Math.max(0, player.connection.latency());
-        int grace = ConfigManager.get().globalSettings.highPingGraceMs;
-        if (ConfigManager.get().isEnabled("fastplace") && ping < grace) {
+        if (ConfigManager.get().isEnabled("fastplace") && Math.max(0, player.connection.latency()) < UNRELIABLE_RTT_MS) {
             boolean tooFast = places.computeIfAbsent(player.getUUID(), ignored -> new FastPlaceCheck())
                     .tooFast(player, packet.getHand(), ConfigManager.get().integer("fastplace", "min_delay_ms", 50));
             if (tooFast) {
@@ -151,10 +140,9 @@ public final class CheckManager {
                 if (registered && ConfigManager.get().bool("fastplace", "auto_cancel", true)) return true;
             }
         }
-        if (ConfigManager.get().isEnabled("scaffold")) {
+        if (ConfigManager.get().isEnabled("scaffold") && Math.max(0, player.connection.latency()) < UNRELIABLE_RTT_MS) {
             double baseReach = ConfigManager.get().decimal("scaffold", "max_extension_reach", 4.5);
-            double pingMargin = Math.min(0.5, ping * 0.0025);
-            Optional<String> invalid = scaffold.check(player, packet.getHitResult(), baseReach + pingMargin,
+            Optional<String> invalid = scaffold.check(player, packet.getHitResult(), baseReach,
                     ConfigManager.get().bool("scaffold", "check_air_place", true));
             if (invalid.isPresent()) {
                 flag(player, "scaffold", invalid.get());
@@ -174,7 +162,7 @@ public final class CheckManager {
     public void onDisconnect(UUID player) {
         violations.save();
         profiles.remove(player); flights.remove(player); speeds.remove(player); jesus.computeIfPresent(player, (id, check) -> { check.clear(id); return null; });
-        breaks.remove(player); places.remove(player); lag.remove(player);
+        breaks.remove(player); places.remove(player); lastMovementTick.remove(player);
     }
     public void savePersistentState() { violations.save(); }
     public void savePersistentStateOnShutdown() { violations.saveNow(); }

@@ -13,7 +13,7 @@ The config exposes only nine implemented checks and enables them by default. Do 
 1. Find the authoritative Fabric event or server packet handler for the behavior.
 2. Document normal vanilla behavior, exemptions, packet ordering, and false-positive risks.
 3. Use `PlayerProfile` buffers to require repeated signals; preserve configured auto-cancel behavior only where the server can safely reject the action.
-4. Use lag grace and correction for movement. Never punish a player solely because a movement packet arrived late.
+4. Keep movement state checks limited to one evaluation per server player tick. Reset speed position baselines after large packet gaps and suppress timing/geometry checks when their packet evidence is unreliable at high RTT; never infer cheating from a delayed packet alone.
 5. Clear transient state on disconnect; preserve decaying violation levels when escalation must survive kicks/restarts.
 6. Keep webhook I/O asynchronous and never log webhook secrets.
 

@@ -32,7 +32,7 @@ The configuration contains only the nine checks wired into the current event pip
 | **KillAura** | Filters configured target categories, checks attack reach and whether the server view ray intersects the target hitbox; buffered anomalies can cancel attacks. |
 | **Reach** | Measures distance from the player's eye position to the nearest point on a target player's hitbox, with a bounded ping margin. |
 | **Flight** | Tracks prolonged unsupported hover and corrects repeated movement anomalies before escalation. |
-| **Speed** | Compares horizontal movement displacement with a configured allowance adjusted for ping and jitter. |
+| **Speed** | Compares horizontal displacement once per server tick with a conservative allowance; packet bursts are excluded from timing samples. |
 | **Jesus** | Looks for sustained near-zero vertical movement above water without swimming, vehicle, or flight context. |
 | **FastBreak** | Uses vanilla block destroy progress, including block/tool/effect factors, to estimate a conservative minimum completion interval. |
 | **FastPlace** | Tracks per-player block placement packet intervals and can cancel repeated packets below the configured delay. |
@@ -58,7 +58,7 @@ Other parameters are check-specific: `max_reach`, `max_angle_delta`, `vertical_t
 
 ### Latency and corrections
 
-`global_settings.high_ping_grace_ms`, `high_jitter_grace_ms`, and `low_tps_grace_threshold` control movement grace. Early movement anomalies can be rubberbanded to a recently grounded position before they enter the violation ladder. These protections reduce risk but trade detection coverage for fewer false positives.
+Movement state checks run at most once per server player tick, so multiple movement packets in one tick cannot inflate flight or water-surface counters. Speed resets its position baseline after a long packet gap. Combat geometry, block timing, and scaffold reach checks are suppressed at RTT of 250 ms or higher because the server cannot reliably compare a delayed client action with the current world snapshot. No dynamic ping multiplier or global lag grace/correction manager is used.
 
 ### Warning, kick, and ban ladder
 

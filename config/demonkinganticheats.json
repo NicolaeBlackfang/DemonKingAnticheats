@@ -1,13 +1,9 @@
 {
-  "config_version": 2,
+  "config_version": 3,
   "global_settings": {
     "enabled": true,
     "debug_mode": false,
     "decay_per_minute": 0.25,
-    "high_ping_grace_ms": 250,
-    "high_jitter_grace_ms": 120,
-    "low_tps_grace_threshold": 17.0,
-    "rubberband_before_punish": 2,
     "discord_webhook": {
       "enabled": false,
       "url": "",
@@ -79,9 +75,9 @@
     "killaura": {
       "enabled": true,
       "strictness": 8,
-      "max_angle_delta": 45.0,
+      "max_angle_delta": 60.0,
       "check_reach": true,
-      "max_reach": 3.05,
+      "max_reach": 3.2,
       "auto_cancel": true,
       "target_players": true,
       "target_mobs": true,
@@ -90,9 +86,7 @@
     "reach": {
       "enabled": true,
       "strictness": 5,
-      "max_reach": 3.05,
-      "ping_margin_per_ms": 0.0015,
-      "max_ping_margin": 0.75,
+      "max_reach": 3.2,
       "auto_cancel": true
     },
     "scaffold": {
@@ -105,8 +99,7 @@
     "speed": {
       "enabled": true,
       "strictness": 5,
-      "base_horizontal_per_packet": 0.72,
-      "ping_tolerance_scale": 0.0025,
+      "base_horizontal_per_tick": 0.85,
       "buffer_limit": 8,
       "auto_cancel": false
     }

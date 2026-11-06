@@ -27,6 +27,7 @@ public final class ConfigManager {
             JsonObject defaults = GSON.toJsonTree(ConfigSchema.defaults()).getAsJsonObject();
             JsonObject current = firstRun ? new JsonObject() : JsonParser.parseString(Files.readString(FILE)).getAsJsonObject();
             if (!current.has("global_settings")) current = migrateLegacy(current, defaults);
+            removeDeprecatedLatencyOptions(current);
             retainSupportedChecks(defaults, current);
             mergeDefaults(defaults, current);
             config = GSON.fromJson(current, ConfigSchema.class);
@@ -55,7 +56,7 @@ public final class ConfigManager {
         JsonObject migrated = defaults.deepCopy();
         if (old.has("general") && old.get("general").isJsonObject()) {
             JsonObject g = old.getAsJsonObject("general"), n = migrated.getAsJsonObject("global_settings");
-            copy(g, n, "enabled", "debugMode", "highPingGraceMs", "highJitterGraceMs", "lowTpsGraceThreshold", "rubberbandBeforePunish");
+            copy(g, n, "enabled", "debugMode");
             if (g.has("decayRatePerMinute")) n.add("decay_per_minute", g.get("decayRatePerMinute"));
         }
         if (old.has("checks") && old.get("checks").isJsonObject()) {
@@ -86,6 +87,18 @@ public final class ConfigManager {
             cleaned.add(entry.getKey(), value == null ? entry.getValue().deepCopy() : value.deepCopy());
         }
         user.add("checks", cleaned);
+    }
+
+    private static void removeDeprecatedLatencyOptions(JsonObject config) {
+        if (!config.has("checks") || !config.get("checks").isJsonObject()) return;
+        for (var check : config.getAsJsonObject("checks").entrySet()) {
+            if (!check.getValue().isJsonObject()) continue;
+            JsonObject options = check.getValue().getAsJsonObject();
+            options.remove("ping_tolerance_scale");
+            options.remove("ping_margin_per_ms");
+            options.remove("max_ping_margin");
+            options.remove("base_horizontal_per_packet");
+        }
     }
 
     private static void mergeDefaults(JsonObject defaults, JsonObject user) {
