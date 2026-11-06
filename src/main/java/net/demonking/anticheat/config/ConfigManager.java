@@ -29,11 +29,13 @@ public final class ConfigManager {
             firstRun = !Files.exists(FILE);
             JsonObject defaults = loadBundledDefaults();
             JsonObject current = firstRun ? new JsonObject() : readCurrentConfig(defaults);
+            migrateLegacyPunishmentDefaults(current, defaults);
             if (!current.has("global_settings")) current = migrateLegacy(current, defaults);
             removeDeprecatedLatencyOptions(current);
             retainSupportedChecks(defaults, current);
             mergeDefaults(defaults, current);
             normalizeGlobalSettings(defaults, current);
+            normalizePunishmentActions(defaults, current);
             current.add("config_version", defaults.get("config_version").deepCopy());
             normalizePunishmentLadder(current, defaults);
             ConfigSchema defaultSchema = GSON.fromJson(defaults, ConfigSchema.class);
@@ -77,7 +79,7 @@ public final class ConfigManager {
         JsonObject migrated = defaults.deepCopy();
         if (old.has("general") && old.get("general").isJsonObject()) {
             JsonObject g = old.getAsJsonObject("general"), n = migrated.getAsJsonObject("global_settings");
-            copy(g, n, "enabled", "debugMode");
+            copy(g, n, "enabled");
             if (g.has("decayRatePerMinute")) n.add("decay_per_minute", g.get("decayRatePerMinute"));
         }
         if (old.has("checks") && old.get("checks").isJsonObject()) {
@@ -160,7 +162,7 @@ public final class ConfigManager {
         switch (id) {
             case "killaura" -> { clamp(options, "max_reach", 2.5, 6.0); clamp(options, "max_angle_delta", 5, 180); }
             case "reach" -> clamp(options, "max_reach", 2.5, 6.0);
-            case "speed" -> clamp(options, "base_horizontal_per_tick", 0.1, 3.0);
+            case "speed" -> clamp(options, "max_horizontal_per_packet", 0.5, 2.0);
             case "flight" -> { clamp(options, "hover_ticks", 10, 1200); clamp(options, "vertical_tolerance", 0.001, 0.5); }
             case "jesus" -> clamp(options, "vertical_tolerance", 0.001, 0.5);
             case "fastbreak" -> clamp(options, "minimum_completion_ratio", 0.1, 0.95);
@@ -229,6 +231,78 @@ public final class ConfigManager {
         configured.add("escalation_ladder", normalized);
     }
 
+    private static void normalizePunishmentActions(JsonObject defaults, JsonObject config) {
+        JsonObject matrix = config.getAsJsonObject("punishment_matrix");
+        JsonObject defaultMatrix = defaults.getAsJsonObject("punishment_matrix");
+        JsonElement supplied = matrix.get("actions");
+        JsonObject actions = supplied != null && supplied.isJsonObject()
+                ? supplied.getAsJsonObject() : new JsonObject();
+        matrix.add("actions", normalizeObject(defaultMatrix.getAsJsonObject("actions"), actions));
+    }
+
+    /** Replace shipped defaults from v5/v6; retain administrator-customized ladders. */
+    private static void migrateLegacyPunishmentDefaults(JsonObject current, JsonObject defaults) {
+        if (!current.has("config_version") || !current.get("config_version").isJsonPrimitive()
+                || !current.getAsJsonPrimitive("config_version").isNumber()
+                || current.get("config_version").getAsInt() >= 7) return;
+        if (!current.has("punishment_matrix") || !current.get("punishment_matrix").isJsonObject()) return;
+        JsonObject matrix = current.getAsJsonObject("punishment_matrix");
+        if (!matrix.has("escalation_ladder") || !matrix.get("escalation_ladder").isJsonArray()) return;
+        var ladder = matrix.getAsJsonArray("escalation_ladder");
+        if (ladder.size() == 1 && ladder.get(0).isJsonObject()) {
+            JsonObject rule = ladder.get(0).getAsJsonObject();
+            if (rule.has("action") && rule.get("action").isJsonPrimitive()
+                    && rule.getAsJsonPrimitive("action").isString()
+                    && "WARN".equalsIgnoreCase(rule.get("action").getAsString())
+                    && rule.has("violations") && rule.get("violations").isJsonPrimitive()
+                    && rule.getAsJsonPrimitive("violations").isNumber()
+                    && rule.get("violations").getAsInt() == 5
+                    && rule.has("message") && rule.get("message").isJsonPrimitive()
+                    && "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7."
+                    .equals(rule.get("message").getAsString())
+                    && rule.has("broadcast") && rule.get("broadcast").isJsonPrimitive()
+                    && !rule.get("broadcast").getAsBoolean()) {
+                matrix.add("escalation_ladder", defaults.getAsJsonObject("punishment_matrix")
+                        .getAsJsonArray("escalation_ladder").deepCopy());
+                net.demonking.anticheat.DemonKingAntiCheat.LOGGER.info(
+                        "Added configurable kick/ban ladder entries; kick and ban remain disabled by default.");
+            }
+            return;
+        }
+        if (ladder.size() != 3) return;
+        String[] actions = {"WARN", "KICK", "BAN"};
+        int[] thresholds = {5, 15, 25};
+        String[] messages = {
+                "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7.",
+                "&8[&6✦ &4DEMON KING&8] &e%player% &7was removed for &c%check%&7.",
+                "&8[&6✦ &4DEMON KING&8] &e%player% &7received a 7-day ban for &c%check%&7."
+        };
+        for (int i = 0; i < ladder.size(); i++) {
+            if (!ladder.get(i).isJsonObject()) return;
+            JsonObject rule = ladder.get(i).getAsJsonObject();
+            if (!rule.has("action") || !rule.has("violations")
+                    || !rule.get("action").isJsonPrimitive()
+                    || !rule.getAsJsonPrimitive("action").isString()
+                    || !rule.get("violations").isJsonPrimitive()
+                    || !rule.getAsJsonPrimitive("violations").isNumber()
+                    || !actions[i].equalsIgnoreCase(rule.get("action").getAsString())
+                    || rule.get("violations").getAsInt() != thresholds[i]) return;
+            if (!rule.has("message") || !rule.get("message").isJsonPrimitive()
+                    || !rule.getAsJsonPrimitive("message").isString()
+                    || !messages[i].equals(rule.get("message").getAsString())
+                    || !rule.has("broadcast") || !rule.get("broadcast").isJsonPrimitive()
+                    || !rule.getAsJsonPrimitive("broadcast").isBoolean()
+                    || !rule.get("broadcast").getAsBoolean()) return;
+            if (i == 2 && (!rule.has("duration_days") || !rule.get("duration_days").isJsonPrimitive()
+                    || rule.get("duration_days").getAsInt() != 7)) return;
+        }
+        matrix.add("escalation_ladder", defaults.getAsJsonObject("punishment_matrix")
+                .getAsJsonArray("escalation_ladder").deepCopy());
+        net.demonking.anticheat.DemonKingAntiCheat.LOGGER.warn(
+                "Migrated the shipped punishment ladder. Kick and ban are available but disabled by default; " +
+                        "enable them only after reviewing check alerts.");
+    }
+
     private static void removeDeprecatedLatencyOptions(JsonObject config) {
         if (!config.has("checks") || !config.get("checks").isJsonObject()) return;
         for (var check : config.getAsJsonObject("checks").entrySet()) {
@@ -238,6 +312,7 @@ public final class ConfigManager {
             options.remove("ping_margin_per_ms");
             options.remove("max_ping_margin");
             options.remove("base_horizontal_per_packet");
+            options.remove("base_horizontal_per_tick");
         }
     }
 

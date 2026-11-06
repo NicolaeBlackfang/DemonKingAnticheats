@@ -1,6 +1,5 @@
 package net.demonking.anticheat.checks.movement;
 
-import net.demonking.anticheat.checks.DetectionRules;
 import net.minecraft.server.level.ServerPlayer;
 import java.util.Optional;
 

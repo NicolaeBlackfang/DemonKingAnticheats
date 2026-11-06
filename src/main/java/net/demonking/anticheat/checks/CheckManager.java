@@ -1,6 +1,5 @@
 package net.demonking.anticheat.checks;
 
-import com.google.gson.JsonObject;
 import net.demonking.anticheat.checks.combat.CrystalAuraCheck;
 import net.demonking.anticheat.checks.combat.KillAuraCheck;
 import net.demonking.anticheat.checks.combat.ReachCheck;
@@ -109,10 +108,6 @@ public final class CheckManager {
                     ConfigManager.get().integer("flight", "hover_ticks", 45),
                     ConfigManager.get().decimal("flight", "vertical_tolerance", 0.005))
                 : Optional.empty();
-        Optional<String> speed = ConfigManager.get().isEnabled("speed")
-                ? speeds.computeIfAbsent(player.getUUID(), ignored -> new SpeedCheck()).check(player,
-                ConfigManager.get().decimal("speed", "base_horizontal_per_tick", 0.42))
-                : Optional.empty();
         Optional<String> water = ConfigManager.get().isEnabled("jesus")
                 ? jesus.computeIfAbsent(player.getUUID(), ignored -> new JesusCheck()).check(player,
                     ConfigManager.get().decimal("jesus", "vertical_tolerance", 0.05),
@@ -123,13 +118,24 @@ public final class CheckManager {
                     ConfigManager.get().decimal("noslow", "max_horizontal_per_tick", 0.22))
                 : Optional.empty();
 
-        Optional<String> violation = flight.isPresent() ? flight : speed.isPresent() ? speed
-                : water.isPresent() ? water : noSlowViolation;
-        String checkId = flight.isPresent() ? "flight" : speed.isPresent() ? "speed"
-                : water.isPresent() ? "jesus" : "noslow";
+        Optional<String> violation = flight.isPresent() ? flight : water.isPresent() ? water : noSlowViolation;
+        String checkId = flight.isPresent() ? "flight" : water.isPresent() ? "jesus" : "noslow";
         if (violation.isPresent()) {
             flag(player, checkId, violation.get());
         }
+    }
+
+    /** Samples displacement only after vanilla has accepted a server-thread movement packet. */
+    public void onMovementPacketAccepted(ServerPlayer player) {
+        if (!active() || !ConfigManager.get().isEnabled("speed")) return;
+        SpeedCheck check = speeds.computeIfAbsent(player.getUUID(), ignored -> new SpeedCheck());
+        if (Math.max(0, player.connection.latency()) >= UNRELIABLE_RTT_MS) {
+            check.reset(player);
+            return;
+        }
+        Optional<String> violation = check.check(player,
+                ConfigManager.get().decimal("speed", "max_horizontal_per_packet", 0.75));
+        violation.ifPresent(detail -> flag(player, "speed", detail));
     }
 
     /** Runs after vanilla has moved the player packet onto the server thread. */
@@ -148,8 +154,8 @@ public final class CheckManager {
         Optional<String> result = breaks.computeIfAbsent(player.getUUID(), ignored -> new FastBreakCheck())
                 .check(player, pos, state, ConfigManager.get().decimal("fastbreak", "minimum_completion_ratio", 0.65));
         if (result.isEmpty()) return true;
-        flag(player, "fastbreak", result.get());
-        return !ConfigManager.get().bool("fastbreak", "auto_cancel", true);
+        boolean registered = flag(player, "fastbreak", result.get());
+        return !(registered && ConfigManager.get().bool("fastbreak", "auto_cancel", true));
     }
 
     /** Called on the server thread before vanilla applies a block interaction or placement. */
@@ -203,7 +209,7 @@ public final class CheckManager {
         double level = violations.add(player.getUUID(), id, 1, schema.globalSettings.decayPerMinute);
         notifications.alert(player.level().getServer(), player, id, level, detail);
         int currentRule = schema.ruleIndexFor(level), previousRule = schema.ruleIndexFor(previous);
-        if (currentRule >= 0 && (currentRule != previousRule || "WARN".equals(schema.ruleAt(currentRule).get("action").getAsString())))
+        if (currentRule >= 0 && currentRule != previousRule)
             punishments.apply(player, id, level, detail, schema.ruleAt(currentRule));
         return true;
     }

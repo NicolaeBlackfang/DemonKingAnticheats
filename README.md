@@ -34,7 +34,7 @@ The configuration contains twelve active checks wired into server packet, tick, 
 | **Kill Aura** | Checks real serverbound attacks, selected entity categories, reach, and whether the server view ray intersects the target hitbox. Repeated anomalies can cancel the attack. |
 | **Reach** | Measures distance to target hitboxes before vanilla's attack-range gate; vanilla validation remains active too. |
 | **Flight** | Tracks prolonged unsupported hovering once per server tick. |
-| **Speed** | Compares accepted horizontal displacement once per server tick and exempts known movement contexts such as knockback, fluids, vehicles, and ice. |
+| **Speed** | Samples displacement after each server-accepted movement packet, ignores packet gaps and high RTT, and uses a conservative per-packet threshold with movement-context exemptions. |
 | **Jesus / Water Walking** | Looks for sustained near-zero vertical movement above water without swimming, vehicle, or flight context. |
 | **No Fall** | Rejects a client on-ground claim after a substantial fall when the reported destination has no supporting collision block. |
 | **No Slow** | Tracks sustained ground movement while the server knows the player is using an item, with exemptions for sprinting, knockback, and fluids. |
@@ -50,7 +50,7 @@ These are heuristics and safeguards, not proof of cheating. Client-only aim assi
 
 Stop the server before editing `config/demonkinganticheats.json`. The checked-in file is bundled into the jar and is the source of truth for generated defaults. First run writes it to the server's config directory; upgrades add newly supported options while keeping valid administrator values. The schema includes only active checks, each enabled by default, plus the punishment ladder.
 
-Config schema version 5 validates option types and clamps numeric settings to supported ranges. If the JSON is malformed, the mod saves a `.bak` copy and regenerates safe defaults instead of aborting startup.
+Config schema version 7 validates option types and clamps numeric settings to supported ranges. Upgrades preserve custom ladders and add missing action controls. If the JSON is malformed, the mod saves a `.bak` copy and regenerates safe defaults instead of aborting startup.
 
 ### Per-check tuning
 
@@ -65,11 +65,11 @@ Other parameters are check-specific: `max_reach`, `max_angle_delta`, `vertical_t
 
 ### Latency and corrections
 
-Movement checks run once at the end of each server tick, after vanilla movement has been applied. Packet-sensitive combat and placement checks run only after Fabric/Minecraft has moved the packet onto the server thread. Reach, fast-break, fast-place, and scaffold checks are skipped at RTT of 250 ms or higher because delayed packet arrival makes their timing or geometry ambiguous. No ping-scaled thresholds or global rubberband system is used.
+Flight, Jesus, and No Slow sample on the server tick. Speed samples each movement packet only after vanilla handles it on the server thread; it resets its baseline after a 200 ms packet gap and does not flag at RTT of 250 ms or higher. Reach, combat geometry, break, place, and scaffold checks are also skipped at RTT of 250 ms or higher because delayed packet arrival makes their timing or geometry ambiguous. These safeguards reduce ambiguity; they cannot guarantee zero false positives on every modded or heavily overloaded server.
 
 ### Warning, kick, and ban ladder
 
-`punishment_matrix.escalation_ladder` is ordered by `violations`. The defaults warn at 5, kick at 15, and apply a seven-day ban at 25. Each step supports `action`, `broadcast`, `message`, and optional `duration_days`. Messages accept `%player%`, `%check%`, and `%violations%`; ampersand color codes are translated to Minecraft formatting codes. Bans are written to the server's ban list.
+`punishment_matrix.escalation_ladder` is ordered by `violations` and includes warning at 5, kick at 15, and a seven-day ban at 25. `punishment_matrix.actions.warn`, `.kick`, and `.ban` independently enable each action. Warning is enabled by default; kick and ban are disabled until an administrator explicitly enables them. Each ladder step supports `action`, `broadcast`, `message`, and optional `duration_days`. Messages accept `%player%`, `%check%`, and `%violations%`; ampersand color codes are translated to Minecraft formatting codes. Bans are written to the server's ban list. Review check alerts before enabling kick or ban on a live server.
 
 ### Discord webhook
 

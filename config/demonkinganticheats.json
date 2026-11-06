@@ -1,8 +1,7 @@
 {
-  "config_version": 5,
+  "config_version": 7,
   "global_settings": {
     "enabled": true,
-    "debug_mode": false,
     "decay_per_minute": 0.25,
     "discord_webhook": {
       "enabled": false,
@@ -13,25 +12,30 @@
     }
   },
   "punishment_matrix": {
+    "actions": {
+      "warn": true,
+      "kick": false,
+      "ban": false
+    },
     "escalation_ladder": [
       {
         "violations": 5,
         "action": "WARN",
-        "broadcast": true,
+        "broadcast": false,
         "message": "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7."
       },
       {
         "violations": 15,
         "action": "KICK",
         "broadcast": true,
-        "message": "&8[&6✦ &4DEMON KING&8] &e%player% &7was removed for &c%check%&7."
+        "message": "&8[&6✦ &4DEMON KING&8] &e%player% &7was kicked after repeated &c%check% &7flags."
       },
       {
         "violations": 25,
         "action": "BAN",
         "duration_days": 7,
         "broadcast": true,
-        "message": "&8[&6✦ &4DEMON KING&8] &e%player% &7received a 7-day ban for &c%check%&7."
+        "message": "&8[&6✦ &4DEMON KING&8] &e%player% &7was banned for 7 days after repeated &c%check% &7flags."
       }
     ]
   },
@@ -41,26 +45,24 @@
       "strictness": 7,
       "buffer_limit": 10,
       "minimum_completion_ratio": 0.65,
-      "auto_cancel": true
+      "auto_cancel": false
     },
     "fastplace": {
       "enabled": true,
       "strictness": 5,
       "min_delay_ms": 50,
-      "auto_cancel": true
+      "auto_cancel": false
     },
     "flight": {
       "enabled": true,
       "strictness": 5,
       "hover_ticks": 45,
       "vertical_tolerance": 0.005,
-      "buffer_limit": 8,
-      "auto_cancel": false
+      "buffer_limit": 8
     },
     "inventorywalk": {
       "enabled": true,
       "strictness": 5,
-      "max_reach": 3.05,
       "allow_rotation": false,
       "auto_cancel": true
     },
@@ -69,7 +71,6 @@
       "strictness": 6,
       "vertical_tolerance": 0.05,
       "require_movement_packet": true,
-      "auto_cancel": true,
       "buffer_limit": 8
     },
     "killaura": {
@@ -99,9 +100,8 @@
     "speed": {
       "enabled": true,
       "strictness": 5,
-      "base_horizontal_per_tick": 0.42,
       "buffer_limit": 8,
-      "auto_cancel": false
+      "max_horizontal_per_packet": 0.75
     },
     "nofall": {
       "enabled": true,
@@ -113,8 +113,7 @@
       "enabled": true,
       "strictness": 5,
       "max_horizontal_per_tick": 0.22,
-      "buffer_limit": 8,
-      "auto_cancel": false
+      "buffer_limit": 8
     },
     "crystalaura": {
       "enabled": true,

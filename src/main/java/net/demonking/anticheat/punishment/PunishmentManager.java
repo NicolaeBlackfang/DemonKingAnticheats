@@ -2,6 +2,7 @@ package net.demonking.anticheat.punishment;
 
 import com.google.gson.JsonObject;
 import net.demonking.anticheat.config.ConfigManager;
+import net.demonking.anticheat.config.ConfigSchema;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.UserBanListEntry;
@@ -15,6 +16,8 @@ public final class PunishmentManager {
 
     public String apply(ServerPlayer player, String check, double violations, String detail, JsonObject rule) {
         String action = rule.get("action").getAsString().toUpperCase(Locale.ROOT);
+        ConfigSchema.PunishmentMatrix matrix = ConfigManager.get().punishmentMatrix;
+        if (matrix == null || matrix.actions == null || !matrix.actions.enabled(action)) return "DISABLED";
         String message = format(rule.has("message") ? rule.get("message").getAsString() : "Anti-cheat action: %check%", player, check, violations);
         Component component = Component.literal(message);
         switch (action) {

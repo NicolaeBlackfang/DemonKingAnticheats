@@ -35,7 +35,15 @@ public abstract class ServerGamePacketListenerMixin {
         }
     }
 
+    /** Sample horizontal displacement after vanilla applies an accepted movement packet. */
+    @Inject(method = "handleMovePlayer", at = @At("TAIL"))
+    private void demonking$sampleAcceptedMovement(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
+        if (DemonKingAntiCheat.CHECKS != null && player != null && player.isAlive())
+            DemonKingAntiCheat.CHECKS.onMovementPacketAccepted(player);
+    }
+
     /** Check actual serverbound attacks; AttackEntityCallback is a client-side hook. */
+    @SuppressWarnings("deprecation")
     @Inject(method = "handleAttack", at = @At(value = "INVOKE", target =
             "Lnet/minecraft/server/level/ServerPlayer;isWithinAttackRange(" +
                     "Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/phys/AABB;D)Z", shift = At.Shift.BEFORE),

@@ -11,6 +11,15 @@ public final class SpeedCheck {
     private long lastSampleNanos;
     private long ignoreTimingUntilNanos;
 
+    /** Establish a fresh baseline after a network stall or server correction. */
+    public void reset(ServerPlayer p) {
+        x = p.getX();
+        z = p.getZ();
+        lastSampleNanos = System.nanoTime();
+        ignoreTimingUntilNanos = lastSampleNanos + 500_000_000L;
+        initialized = true;
+    }
+
     public Optional<String> check(ServerPlayer p, double allowedDistance) {
         double nx = p.getX(), nz = p.getZ();
         long now = System.nanoTime();
@@ -26,7 +35,12 @@ public final class SpeedCheck {
         z = nz;
         long gap = now - lastSampleNanos;
         lastSampleNanos = now;
-        if (gap > 250_000_000L) ignoreTimingUntilNanos = now + 750_000_000L;
+        // Never compare positions separated by a packet stall: the accumulated
+        // legitimate movement is not a per-packet speed sample.
+        if (gap > 200_000_000L) {
+            ignoreTimingUntilNanos = now + 500_000_000L;
+            return Optional.empty();
+        }
         if (now < ignoreTimingUntilNanos) return Optional.empty();
         boolean exempt = p.isPassenger() || p.isFallFlying() || p.onClimbable() || p.isInWater() || p.isInLava()
                 || p.isCreative() || p.isSpectator() || p.getAbilities().flying || p.isUsingItem() || p.hurtTime > 0;

@@ -10,12 +10,13 @@ This single Gradle project builds Minecraft 26.1.2 / Java 25 using official name
 - `config` loads the bundled workspace JSON as the canonical default, merges valid administrator values, normalizes option types/ranges, and writes the versioned server config. Every check has its own JSON object.
 - `model` contains persistent decaying violation levels and per-session token buffers.
 - `punishment` applies the configured ladder, timed/permanent server bans, messages, staff notifications, and asynchronous Discord embeds.
+- `punishment_matrix.actions` is the master action gate for warnings, kicks, and bans. Ladder thresholds do not override a disabled action; kick and ban default to disabled.
 - `checks` contains isolated checks and the event router. The network mixin hooks movement, attacks, and use-on-block packets after Minecraft's thread handoff.
 
 ## Implemented event paths
 
 - KillAura and Reach inspect `ServerboundAttackPacket` immediately before vanilla's attack-range check. This is the serverbound path; the Fabric `AttackEntityCallback` is a client interaction hook and is not used for enforcement.
-- Flight, Speed, Jesus, and No Slow run from `ServerTickEvents.END_SERVER_TICK` after vanilla movement. This avoids packet-thread races and gives counters a real server-tick cadence.
+- Flight, Jesus, and No Slow run from `ServerTickEvents.END_SERVER_TICK` after vanilla movement. Speed samples after each server-thread movement packet has been applied, avoiding tick-aggregated displacement that can turn sprint or packet bursts into false speed flags. Speed resets after packet gaps and is suppressed for RTT at/above 250 ms.
 - No Fall inspects on-ground claims after `PacketUtils.ensureRunningOnSameThread`, compares them with server fall distance and destination support, and cancels spoofed ground packets.
 - Crystal Aura counts end-crystal attacks by server tick. It alerts on excessive bursts but does not cancel by default.
 - FastBreak runs from Fabric's pre-break callback, uses vanilla destroy-progress calculation (block, tool and effects) for a timing floor, and may cancel the break after buffer confirmation.

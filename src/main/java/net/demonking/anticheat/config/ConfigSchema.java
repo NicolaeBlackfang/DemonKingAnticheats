@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public final class ConfigSchema {
     @SerializedName("config_version")
-    public int configVersion = 5;
+    public int configVersion = 7;
     @SerializedName("global_settings")
     public GlobalSettings globalSettings = new GlobalSettings();
     @SerializedName("punishment_matrix")
@@ -22,8 +22,6 @@ public final class ConfigSchema {
 
     public static final class GlobalSettings {
         public boolean enabled = true;
-        @SerializedName("debug_mode")
-        public boolean debugMode = false;
         @SerializedName("decay_per_minute")
         public double decayPerMinute = 0.25;
         @SerializedName("discord_webhook")
@@ -41,8 +39,25 @@ public final class ConfigSchema {
     }
 
     public static final class PunishmentMatrix {
+        public PunishmentActions actions = new PunishmentActions();
         @SerializedName("escalation_ladder")
         public JsonArray escalationLadder = defaultLadder();
+    }
+
+    /** Master action switches; thresholds remain editable independently in the ladder. */
+    public static final class PunishmentActions {
+        public boolean warn = true;
+        public boolean kick = false;
+        public boolean ban = false;
+
+        public boolean enabled(String action) {
+            return switch (action.toUpperCase(java.util.Locale.ROOT)) {
+                case "WARN" -> warn;
+                case "KICK" -> kick;
+                case "BAN" -> ban;
+                default -> false;
+            };
+        }
     }
 
     public boolean isEnabled(String id) {
@@ -78,11 +93,6 @@ public final class ConfigSchema {
         return object != null && object.has(field) ? object.get(field).getAsDouble() : fallback;
     }
 
-    public String string(String id, String field, String fallback) {
-        JsonObject object = checks.get(key(id));
-        return object != null && object.has(field) ? object.get(field).getAsString() : fallback;
-    }
-
     private static String key(String id) {
         return id.toLowerCase(java.util.Locale.ROOT);
     }
@@ -112,19 +122,18 @@ public final class ConfigSchema {
         aim.addProperty("target_mobs", true);
         aim.addProperty("target_animals", true);
         add(schema, "jesus", "strictness", 6, "vertical_tolerance", 0.05, "require_movement_packet", true,
-                "auto_cancel", true, "buffer_limit", 8);
+                "buffer_limit", 8);
         add(schema, "fastbreak", "strictness", 7, "buffer_limit", 10, "minimum_completion_ratio", 0.65, "auto_cancel",
-                true);
-        add(schema, "fastplace", "strictness", 5, "min_delay_ms", 50, "auto_cancel", true);
+                false);
+        add(schema, "fastplace", "strictness", 5, "min_delay_ms", 50, "auto_cancel", false);
         add(schema, "scaffold", "strictness", 9, "check_air_place", true, "max_extension_reach", 4.5, "auto_cancel",
                 true);
-        add(schema, "inventorywalk", "strictness", 5, "max_reach", 3.05, "allow_rotation", false, "auto_cancel", true);
+        add(schema, "inventorywalk", "strictness", 5, "allow_rotation", false, "auto_cancel", true);
         add(schema, "reach", "max_reach", 3.05, "auto_cancel", true);
-        add(schema, "speed", "base_horizontal_per_tick", 0.42, "buffer_limit", 8, "auto_cancel", false);
-        add(schema, "flight", "hover_ticks", 45, "vertical_tolerance", 0.005, "buffer_limit", 8, "auto_cancel", false);
+        add(schema, "speed", "max_horizontal_per_packet", 0.75, "buffer_limit", 8);
+        add(schema, "flight", "hover_ticks", 45, "vertical_tolerance", 0.005, "buffer_limit", 8);
         add(schema, "nofall", "strictness", 5, "minimum_fall_distance", 4.0, "cancel_spoofed_ground_packet", true);
-        add(schema, "noslow", "strictness", 5, "max_horizontal_per_tick", 0.22, "buffer_limit", 8, "auto_cancel",
-                false);
+        add(schema, "noslow", "strictness", 5, "max_horizontal_per_tick", 0.22, "buffer_limit", 8);
         add(schema, "crystalaura", "strictness", 8, "max_crystal_attacks_per_tick", 2, "buffer_limit", 8, "auto_cancel",
                 false);
     }
@@ -144,10 +153,9 @@ public final class ConfigSchema {
 
     private static JsonArray defaultLadder() {
         JsonArray rules = new JsonArray();
-        rules.add(rule(5, "WARN", 0, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7."));
-        rules.add(rule(15, "KICK", 0, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7was removed for &c%check%&7."));
-        rules.add(
-                rule(25, "BAN", 7, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7received a 7-day ban for &c%check%&7."));
+        rules.add(rule(5, "WARN", 0, false, "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7."));
+        rules.add(rule(15, "KICK", 0, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7was kicked after repeated &c%check% &7flags."));
+        rules.add(rule(25, "BAN", 7, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7was banned for 7 days after repeated &c%check% &7flags."));
         return rules;
     }
 
