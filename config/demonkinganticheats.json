@@ -1,410 +1,114 @@
 {
-  "general": {
+  "config_version": 2,
+  "global_settings": {
     "enabled": true,
-    "debugMode": false,
-    "defaultPunishment": "KICK",
-    "maxViolations": 20,
-    "decayRatePerMinute": 2.0
+    "debug_mode": false,
+    "decay_per_minute": 0.25,
+    "high_ping_grace_ms": 250,
+    "high_jitter_grace_ms": 120,
+    "low_tps_grace_threshold": 17.0,
+    "rubberband_before_punish": 2,
+    "discord_webhook": {
+      "enabled": false,
+      "url": "",
+      "embed_color": 16711680,
+      "username": "Demon King Anti-Cheats",
+      "timeout_seconds": 5
+    }
+  },
+  "punishment_matrix": {
+    "escalation_ladder": [
+      {
+        "violations": 5,
+        "action": "WARN",
+        "broadcast": true,
+        "message": "&c[AntiCheat] &e%player% &7was warned for &f%check%&7."
+      },
+      {
+        "violations": 15,
+        "action": "KICK",
+        "broadcast": true,
+        "message": "&c[AntiCheat] &f%player% &ckicked for unfair advantage (%check%)."
+      },
+      {
+        "violations": 25,
+        "action": "BAN",
+        "duration_days": 7,
+        "broadcast": true,
+        "message": "&c[AntiCheat] &4%player% &cbanned for 7 days by DemonKing AntiCheat."
+      }
+    ]
   },
   "checks": {
-    "aimAssist": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "aimbot": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "airJump": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "antiAfk": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "antiBlind": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "antiCactus": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "antiFire": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "antiKnockback": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoArmor": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoClicker": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoEat": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoFish": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoLog": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoMine": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoSoup": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "autoTotem": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "baritone": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "blink": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "boatFly": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "bowAimbot": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "breadcrumbs": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "bunnyHop": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "chams": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "criticals": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "derp": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "dolphin": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "dupeExploits": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "esp": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "fastBow": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "fastBreak": {
+    "fastbreak": {
       "enabled": true,
-      "punishment": "WARN",
-      "threshold": 0.65,
-      "maxReach": 3.05,
-      "strictness": 5
+      "strictness": 7,
+      "buffer_limit": 10,
+      "minimum_completion_ratio": 0.65,
+      "auto_cancel": true
     },
-    "fastPlace": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+    "fastplace": {
+      "enabled": true,
+      "strictness": 5,
+      "min_delay_ms": 50,
+      "auto_cancel": true
     },
     "flight": {
       "enabled": true,
-      "punishment": "KICK",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+      "strictness": 5,
+      "hover_ticks": 45,
+      "vertical_tolerance": 0.005,
+      "buffer_limit": 8,
+      "auto_cancel": false
     },
-    "freecam": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "fullbright": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "highJump": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "inventoryWalk": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+    "inventorywalk": {
+      "enabled": true,
+      "strictness": 5,
+      "max_reach": 3.05,
+      "allow_rotation": false,
+      "auto_cancel": true
     },
     "jesus": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "killAura": {
       "enabled": true,
-      "punishment": "KICK",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+      "strictness": 6,
+      "vertical_tolerance": 0.05,
+      "require_movement_packet": true,
+      "auto_cancel": true,
+      "buffer_limit": 8
     },
-    "longJump": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "noClip": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "noFall": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "noSlowDown": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "nuker": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "phase": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+    "killaura": {
+      "enabled": true,
+      "strictness": 8,
+      "max_angle_delta": 45.0,
+      "check_reach": true,
+      "max_reach": 3.05,
+      "auto_cancel": true,
+      "target_players": true,
+      "target_mobs": true,
+      "target_animals": true
     },
     "reach": {
       "enabled": true,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "regen": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "safeWalk": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+      "strictness": 5,
+      "max_reach": 3.05,
+      "ping_margin_per_ms": 0.0015,
+      "max_ping_margin": 0.75,
+      "auto_cancel": true
     },
     "scaffold": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "sneak": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+      "enabled": true,
+      "strictness": 9,
+      "check_air_place": true,
+      "max_extension_reach": 4.5,
+      "auto_cancel": true
     },
     "speed": {
       "enabled": true,
-      "punishment": "KICK",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "spider": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "spinBot": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "step": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "timer": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "tracers": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "triggerbot": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
-    },
-    "xRay": {
-      "enabled": false,
-      "punishment": "WARN",
-      "threshold": 1.0,
-      "maxReach": 3.05,
-      "strictness": 5
+      "strictness": 5,
+      "base_horizontal_per_packet": 0.72,
+      "ping_tolerance_scale": 0.0025,
+      "buffer_limit": 8,
+      "auto_cancel": false
     }
   }
 }

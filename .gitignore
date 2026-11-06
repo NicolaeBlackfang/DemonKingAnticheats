@@ -1,32 +1,56 @@
-# Gradle / Loom outputs and caches
+# Gradle and Fabric Loom caches / generated outputs
 .gradle/
 .loom/
 build/
 **/build/
 
-# Local development servers and run configs
-run/
-logs/
-*.log
-server.properties
-world/
-world_*/
-
-# IDE / editor files
+# IDE and editor metadata
 .idea/
 *.iml
 .vscode/
+/.agents/
+/.aws/
+/.codex/
 .settings/
 .classpath
 .project
 bin/
 out/
 
+# Local servers, test worlds, and logs
+run/
+run-*/
+logs/
+*.log
+server.properties
+eula.txt
+ops.json
+whitelist.json
+usercache.json
+banned-players.json
+banned-ips.json
+world/
+world_*/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+*.pem
+*.key
+*.jks
+*.p12
+credentials.json
+local.properties
+gradle-local.properties
+
 # OS files
 .DS_Store
 Thumbs.db
 
-# Ignore generated jars except manually curated release binaries and wrapper
+# Keep only curated release jars and the Gradle wrapper binary
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
 !releases/**/*.jar

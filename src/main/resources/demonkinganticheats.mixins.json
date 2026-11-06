@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.anticheat.mixin",
+  "package": "net.demonking.anticheat.mixin",
   "compatibilityLevel": "${javaMixinLevel}",
   "mixins": ["ServerGamePacketListenerMixin"],
   "injectors": { "defaultRequire": 1 }

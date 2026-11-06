@@ -1,59 +1,23 @@
 # Developer build and release guide
 
-This guide is for authorized developers maintaining and compiling the proprietary mod. The project is a **single Gradle project**: there are no version subprojects, shared build modules, or version matrix folders.
+This proprietary project is maintained by authorized developers. It is a single Gradle project, not a version matrix.
 
-## Requirements and normal build
+## Default build
 
-- JDK 25 (used to run Gradle and compile the default Minecraft 26.1.2 target)
-- Network access on the first build so Gradle can download Loom, Minecraft, Loader, and Fabric API
-
-At the repository root:
+Use JDK 25 and run from the repository root:
 
 ```sh
 ./gradlew clean build
 ```
 
-The production jar is generated under `build/libs/`, named `DemonKingAntiCheats-mc26.1.2-1.0.0.jar`. The ordinary `jar` task is final for the current official named-class Loom setup. Sources, classes, and other build intermediates stay in the ignored `build/` folder.
+The production artifact is `build/libs/DemonKingAntiCheats-mc26.1.2-1.0.1.jar`. The standard jar task is final for the current named-class Loom setup. Source archives are disabled.
 
-## Building a different Minecraft release
+## Porting to another Minecraft version
 
-A version change is a source port and dependency update, not just a filename change. Before treating a jar as compatible:
+1. Verify the exact release's Java, Fabric Loader, Fabric API, Loom and mappings from Fabric's current developer resources.
+2. Update `minecraft_version`, `loader_version`, `fabric_version`, and `java_version` in `gradle.properties`. Change the Loom plugin version in `build.gradle` if required.
+3. Port Minecraft types, Fabric callback signatures, packet handler descriptors, mixin targets, and metadata constraints. The current implementation uses official named classes for 26.1.2; a 1.21.x target needs a separate Yarn/remapping source port.
+4. Run `./gradlew --no-daemon clean build`, inspect the generated jar metadata, then run an exact-version dedicated server. Verify movement, combat, block-break and use-on-block cancellation, menu handling, config migration, webhook errors, and the punishment ladder.
+5. Only after validation, copy the binary to `releases/<minecraft-version>/`. Do not claim compatibility for targets that were not compiled and server-validated.
 
-1. Check the target Minecraft version's official Fabric developer page for its required Java runtime, Fabric Loader, Fabric API, and Loom plugin version. Confirm the release exists in the Fabric Maven repository.
-2. Update the default values in `gradle.properties`: `minecraft_version`, `loader_version`, `fabric_version`, and `java_version`. Keep `mod_version` for the mod's own release number.
-3. Update the Loom plugin version in the root `build.gradle` if the selected Fabric instructions require another version. Legacy versions may use Yarn mappings and `net.fabricmc.fabric-loom-remap`; Minecraft 26.1+ uses official named game classes and `net.fabricmc.fabric-loom`. Do not assume the existing named-class code builds against Yarn targets.
-4. Port all Minecraft imports, event callback types, mixin targets and method descriptors, and metadata requirements for that exact release. Update `src/main/resources/fabric.mod.json` if the target Java version or metadata constraint changes. Keep the source mixin compatibility level aligned in `processResources`.
-5. Build and inspect the artifact:
-
-   ```sh
-   ./gradlew --no-daemon clean build
-   ```
-
-   Confirm that `build/libs/` contains one final jar named with the target Minecraft and mod versions. Inspect its `fabric.mod.json`, then launch a dedicated server with that exact Minecraft version, Loader, and API. Verify startup, config generation, movement, attack and block-break handlers, disconnect cleanup, and punishments before release.
-6. Copy only the validated production jar into `releases/<minecraft-version>/`. For example:
-
-   ```sh
-   mkdir -p releases/26.1.2
-   cp build/libs/DemonKingAntiCheats-mc26.1.2-1.0.0.jar releases/26.1.2/
-   ```
-
-   Rename the copied file only if required by the release channel. Keep generated outputs in `build/libs/`; do not commit them as source or create duplicate version-specific build trees.
-7. Update the README's supported-version statement only after the target has compiled and passed dedicated-server validation. Do not advertise unbuilt targets.
-
-For local iteration, `./gradlew build` is enough. `./gradlew clean` clears generated output. GitHub Actions runs the same clean build on pushes, pull requests, and manual dispatch, then stores the jar as a workflow artifact; it does not publish a public release automatically.
-
-## Repository layout
-
-```text
-src/main/java/com/anticheat/     mod entrypoint, checks, handlers, config, mixin
-src/main/resources/              Fabric metadata and mixin config
-config/                          example administrator configuration
- docs/                           maintainer-only technical guides
-.github/workflows/build.yml      CI build and artifact upload
-build/libs/                      generated final jar (ignored by Git)
-releases/<mc-version>/           manually curated release copies
-```
-
-## Current implementation limits
-
-Five checks have executable logic: Flight, Speed, Reach, rapid attack cadence, and Fast Break. The remaining check names are only config catalog entries. Client-rendered-only hacks cannot be reliably inferred by a server. Review the heuristics and false-positive behavior in a test server when adding checks; do not describe placeholder entries as implemented detection.
+The GitHub Actions workflow builds and stores the jar as a workflow artifact. It does not publish public releases. Never distribute a source archive.

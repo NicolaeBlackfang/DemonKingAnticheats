@@ -5,7 +5,7 @@
   "name": "Demon King Anti-Cheats",
   "description": "Server-side cheat detection for Minecraft ${minecraft_version}.",
   "environment": "server",
-  "entrypoints": { "main": ["com.anticheat.AntiCheatMod"] },
+  "entrypoints": { "main": ["net.demonking.anticheat.DemonKingAntiCheat"] },
   "mixins": ["demonkinganticheats.mixins.json"],
   "depends": {
     "fabricloader": ">=${loader_version}",

@@ -1,27 +1,28 @@
 # Internal architecture
 
-This document is for authorized developers and AI assistants maintaining the workspace.
+For authorized developers and AI assistants maintaining this proprietary mod.
 
-## Single-project layout
+## Project and packages
 
-The root Gradle project builds the configured Minecraft release. Java sources under `src/main/java` contain the mod entrypoint, check orchestration, individual checks, configuration, violation tracking, punishment and notification handlers, and the packet-handler mixin. `src/main/resources` carries Fabric metadata and the mixin configuration. The default target is 26.1.2 with Fabric Loom's official named classes and Java 25. The standard `jar` task is the production artifact; no matrix collector or version subprojects are involved.
+This single Gradle project builds Minecraft 26.1.2 / Java 25 using official named classes. Sources use `net.demonking.anticheat`:
 
-## Runtime data flow
+- `DemonKingAntiCheat` registers Fabric events, the tick monitor, and the ANSI startup banner.
+- `config` loads and normalizes the versioned JSON schema. Every check has its own JSON object, so parameters can be check-specific.
+- `model` contains persistent decaying violation levels and per-session token buffers.
+- `lag` tracks movement packet timing, RTT/jitter grace, measured server tick delays, and recent grounded coordinates for correction.
+- `punishment` applies the configured ladder, timed/permanent server bans, messages, staff notifications, and asynchronous Discord embeds.
+- `checks` contains isolated checks and the event router. The network mixin observes movement packets at the handler head/tail and use-on-block packets before vanilla processes them.
 
-- `AntiCheatMod` loads `config/demonkinganticheats.json`, initializes `CheckManager`, emits the first-run ANSI banner, and registers Fabric callbacks for attacks, block breaks, disconnects, and server shutdown.
-- `ServerGamePacketListenerMixin` injects at the tail of the server movement packet handler. It sends the accepted player state to `CheckManager.onMovement`.
-- `CheckManager` gates processing on the global and per-check configuration, keeps per-player state for movement and break checks, and invokes the combat checks.
-- `DetectionRules` contains small pure threshold decisions. Check implementations return optional violation descriptions rather than mutating the server directly.
-- `ViolationTracker` applies time-based decay. `NotificationHandler` alerts operators and `PunishmentHandler` applies configured warning or disconnect behavior.
+## Implemented event paths
 
-## Injection and cancellation
+- KillAura and Reach run through `AttackEntityCallback`; KillAura filters target categories from config, checks the server view ray against the target hitbox, and checks configured reach. Invalid attacks can be cancelled after the configured signal buffer confirms them.
+- Flight, Speed, and Jesus run after vanilla movement handling. RTT, jitter, packet gaps, and measured tick stalls grant grace. Early repeated movement violations are rubberbanded to the last grounded location before entering escalation.
+- FastBreak runs from Fabric's pre-break callback, uses vanilla destroy-progress calculation (block, tool and effects) for a timing floor, and may cancel the break after buffer confirmation.
+- FastPlace and Scaffold inspect `ServerboundUseItemOnPacket` before vanilla handles it. They check rate, reach, and a supporting face; configured auto-cancel can reject invalid placements.
+- InventoryWalk checks server-known container menus. It can cancel movement, attacks, and block interactions while such a menu is open. The server cannot know when a player opens the client-only personal inventory screen.
 
-The movement mixin observes packet handling after vanilla's handler. It does not cancel vanilla movement; current movement checks report violations only. `AttackEntityCallback` observes server-side player attacks and returns PASS. `PlayerBlockBreakEvents.BEFORE` can cancel a break when Fast Break flags it. Disconnect removes per-player state, and server stopping saves config. If a check is added, prefer Fabric events; introduce a mixin only when no suitable event exists and document the target descriptor and ordering.
+## Coverage and safety boundaries
 
-## Performance notes
+The configuration intentionally contains only nine active checks: KillAura, Reach, Flight, Speed, Jesus, FastBreak, FastPlace, Scaffold, and InventoryWalk. Several named hacks are client-render-only, and many others cannot be inferred reliably from server packets alone. Do not add a check option without a real server-side signal and exact-version validation.
 
-Per-player check state is keyed by UUID and cleared on disconnect. Keep hot callbacks allocation-light; avoid disk I/O, blocking work, or expensive world scans in packet and interaction callbacks. Use bounded per-player state and deterministic short-circuit conditions. Any async work must return to the server thread before touching game state.
-
-## Current limits
-
-Five checks have active logic: Flight, Speed, Reach, rapid attack cadence, and Fast Break. Other config IDs are placeholders. Server-only code cannot inspect client rendering directly. The movement callback sees server-processed state and is not a raw client telemetry feed. Treat checks as heuristics and tune conservative thresholds.
+The buffers and RTT/tick compensation are heuristics. No server plugin can promise zero false positives under every mod, latency pattern, or server load. Validate thresholds and cancellation behavior on the exact target server before enabling high-impact punishment rules.

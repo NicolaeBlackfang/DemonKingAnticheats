@@ -2,7 +2,7 @@ plugins {
     id 'net.fabricmc.fabric-loom' version '1.19.3'
 }
 
-group = 'com.anticheat'
+group = 'net.demonking.anticheat'
 version = providers.gradleProperty('mod_version').get()
 base {
     archivesName = "DemonKingAntiCheats-mc${providers.gradleProperty('minecraft_version').get()}"
