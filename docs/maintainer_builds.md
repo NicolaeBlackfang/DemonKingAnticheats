@@ -10,7 +10,7 @@ Use JDK 25 and run from the repository root:
 ./gradlew clean build
 ```
 
-The production artifact is `build/libs/DemonKingAntiCheats-mc26.1.2-1.0.1.jar`. The standard jar task is final for the current named-class Loom setup. Source archives are disabled.
+The production artifact is `build/libs/DemonKingAntiCheats-mc26.1.2-1.0.2.jar`. The standard jar task is final for the current named-class Loom setup. Source archives are disabled.
 
 ## Porting to another Minecraft version
 

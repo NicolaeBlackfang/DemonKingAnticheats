@@ -9,7 +9,7 @@ import java.util.Map;
 
 /** Versioned, per-check JSON schema. Each check stores only settings meaningful to that module. */
 public final class ConfigSchema {
-    @SerializedName("config_version") public int configVersion = 3;
+    @SerializedName("config_version") public int configVersion = 4;
     @SerializedName("global_settings") public GlobalSettings globalSettings = new GlobalSettings();
     @SerializedName("punishment_matrix") public PunishmentMatrix punishmentMatrix = new PunishmentMatrix();
     public Map<String, JsonObject> checks = new LinkedHashMap<>();
@@ -63,7 +63,7 @@ public final class ConfigSchema {
 
     public static ConfigSchema defaults() {
         ConfigSchema schema = new ConfigSchema();
-        String[] ids = {"fastbreak","fastplace","flight","inventorywalk","jesus","killaura","reach","scaffold","speed"};
+        String[] ids = {"fastbreak","fastplace","flight","inventorywalk","jesus","killaura","reach","scaffold","speed","nofall","noslow","crystalaura"};
         for (String id : ids) {
             JsonObject options = new JsonObject();
             options.addProperty("enabled", true);
@@ -84,9 +84,12 @@ public final class ConfigSchema {
         add(schema, "fastplace", "strictness", 5, "min_delay_ms", 50, "auto_cancel", true);
         add(schema, "scaffold", "strictness", 9, "check_air_place", true, "max_extension_reach", 4.5, "auto_cancel", true);
         add(schema, "inventorywalk", "strictness", 5, "max_reach", 3.05, "allow_rotation", false, "auto_cancel", true);
-        add(schema, "reach", "max_reach", 3.2, "auto_cancel", true);
-        add(schema, "speed", "base_horizontal_per_tick", 0.85, "buffer_limit", 8, "auto_cancel", false);
+        add(schema, "reach", "max_reach", 3.0, "auto_cancel", true);
+        add(schema, "speed", "base_horizontal_per_tick", 0.42, "buffer_limit", 8, "auto_cancel", false);
         add(schema, "flight", "hover_ticks", 45, "vertical_tolerance", 0.005, "buffer_limit", 8, "auto_cancel", false);
+        add(schema, "nofall", "strictness", 5, "minimum_fall_distance", 4.0, "cancel_spoofed_ground_packet", true);
+        add(schema, "noslow", "strictness", 5, "max_horizontal_per_tick", 0.22, "buffer_limit", 8, "auto_cancel", false);
+        add(schema, "crystalaura", "strictness", 8, "max_crystal_attacks_per_tick", 2, "buffer_limit", 8, "auto_cancel", false);
     }
 
     private static void add(ConfigSchema schema, String id, Object... pairs) {
@@ -101,9 +104,9 @@ public final class ConfigSchema {
 
     private static JsonArray defaultLadder() {
         JsonArray rules = new JsonArray();
-        rules.add(rule(5, "WARN", 0, true, "&c[AntiCheat] &e%player% &7was warned for &f%check%&7."));
-        rules.add(rule(15, "KICK", 0, true, "&c[AntiCheat] &f%player% &ckicked for unfair advantage (%check%)."));
-        rules.add(rule(25, "BAN", 7, true, "&c[AntiCheat] &4%player% &cbanned for 7 days by DemonKing AntiCheat."));
+        rules.add(rule(5, "WARN", 0, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7received a warning for &c%check%&7."));
+        rules.add(rule(15, "KICK", 0, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7was removed for &c%check%&7."));
+        rules.add(rule(25, "BAN", 7, true, "&8[&6✦ &4DEMON KING&8] &e%player% &7received a 7-day ban for &c%check%&7."));
         return rules;
     }
     private static JsonObject rule(int violations, String action, int days, boolean broadcast, String message) {

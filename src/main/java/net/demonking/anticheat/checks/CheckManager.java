@@ -1,10 +1,13 @@
 package net.demonking.anticheat.checks;
 
 import com.google.gson.JsonObject;
+import net.demonking.anticheat.checks.combat.CrystalAuraCheck;
 import net.demonking.anticheat.checks.combat.KillAuraCheck;
 import net.demonking.anticheat.checks.combat.ReachCheck;
 import net.demonking.anticheat.checks.movement.FlightCheck;
 import net.demonking.anticheat.checks.movement.JesusCheck;
+import net.demonking.anticheat.checks.movement.NoFallCheck;
+import net.demonking.anticheat.checks.movement.NoSlowCheck;
 import net.demonking.anticheat.checks.movement.SpeedCheck;
 import net.demonking.anticheat.checks.player.InventoryWalkCheck;
 import net.demonking.anticheat.checks.world.FastBreakCheck;
@@ -18,6 +21,7 @@ import net.demonking.anticheat.punishment.NotificationHandler;
 import net.demonking.anticheat.punishment.PunishmentManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -30,7 +34,7 @@ import java.util.UUID;
 /** Routes server events to isolated check modules and shared buffers/escalation. */
 public final class CheckManager {
     private static final int UNRELIABLE_RTT_MS = 250;
-    private static final String[] IMPLEMENTED = {"fastbreak", "fastplace", "flight", "speed", "reach", "killaura", "jesus", "scaffold", "inventorywalk"};
+    private static final String[] IMPLEMENTED = {"fastbreak", "fastplace", "flight", "speed", "reach", "killaura", "jesus", "scaffold", "inventorywalk", "nofall", "noslow", "crystalaura"};
     private final ViolationTracker violations = new ViolationTracker();
     private final NotificationHandler notifications = new NotificationHandler();
     private final PunishmentManager punishments = new PunishmentManager();
@@ -38,11 +42,13 @@ public final class CheckManager {
     private final Map<UUID, FlightCheck> flights = new HashMap<>();
     private final Map<UUID, SpeedCheck> speeds = new HashMap<>();
     private final Map<UUID, JesusCheck> jesus = new HashMap<>();
+    private final Map<UUID, NoSlowCheck> noSlow = new HashMap<>();
     private final Map<UUID, FastBreakCheck> breaks = new HashMap<>();
     private final Map<UUID, FastPlaceCheck> places = new HashMap<>();
-    private final Map<UUID, Integer> lastMovementTick = new HashMap<>();
     private final KillAuraCheck killaura = new KillAuraCheck();
     private final ReachCheck reach = new ReachCheck();
+    private final CrystalAuraCheck crystalAura = new CrystalAuraCheck();
+    private final NoFallCheck noFall = new NoFallCheck();
     private final ScaffoldCheck scaffold = new ScaffoldCheck();
     private final InventoryWalkCheck inventoryWalk = new InventoryWalkCheck();
 
@@ -57,6 +63,15 @@ public final class CheckManager {
         if (ConfigManager.get().isEnabled("inventorywalk") && inventoryWalk.shouldBlock(attacker, ConfigManager.get().bool("inventorywalk", "allow_rotation", false))) {
             flag(attacker, "inventorywalk", "attack while server container is open");
             return ConfigManager.get().bool("inventorywalk", "auto_cancel", true);
+        }
+        if (ConfigManager.get().isEnabled("crystalaura")
+                && Math.max(0, attacker.connection.latency()) < UNRELIABLE_RTT_MS) {
+            Optional<String> crystalViolation = crystalAura.check(attacker, target,
+                    ConfigManager.get().integer("crystalaura", "max_crystal_attacks_per_tick", 2));
+            if (crystalViolation.isPresent()) {
+                boolean registered = flag(attacker, "crystalaura", crystalViolation.get());
+                if (registered && ConfigManager.get().bool("crystalaura", "auto_cancel", false)) return true;
+            }
         }
         // Combat geometry compares the current server snapshot to an older client action.
         // Suppress geometry flags while either side has a delayed view of that snapshot.
@@ -88,11 +103,7 @@ public final class CheckManager {
 
     public void onMovement(ServerPlayer player) {
         if (!active()) return;
-        // Movement packets can arrive in bursts. Evaluate stateful checks at most once
-        // per server player tick so packet cadence cannot inflate hover/surface counters.
-        int tick = player.tickCount;
-        Integer previousTick = lastMovementTick.put(player.getUUID(), tick);
-        if (previousTick != null && previousTick == tick) return;
+        // Called once from END_SERVER_TICK, after vanilla movement has been applied.
         Optional<String> flight = ConfigManager.get().isEnabled("flight")
                 ? flights.computeIfAbsent(player.getUUID(), ignored -> new FlightCheck()).check(player,
                     ConfigManager.get().integer("flight", "hover_ticks", 45),
@@ -100,19 +111,35 @@ public final class CheckManager {
                 : Optional.empty();
         Optional<String> speed = ConfigManager.get().isEnabled("speed")
                 ? speeds.computeIfAbsent(player.getUUID(), ignored -> new SpeedCheck()).check(player,
-                    ConfigManager.get().decimal("speed", "base_horizontal_per_tick", 0.85))
+                ConfigManager.get().decimal("speed", "base_horizontal_per_tick", 0.42))
                 : Optional.empty();
         Optional<String> water = ConfigManager.get().isEnabled("jesus")
                 ? jesus.computeIfAbsent(player.getUUID(), ignored -> new JesusCheck()).check(player,
                     ConfigManager.get().decimal("jesus", "vertical_tolerance", 0.05),
                     ConfigManager.get().bool("jesus", "require_movement_packet", true))
                 : Optional.empty();
+        Optional<String> noSlowViolation = ConfigManager.get().isEnabled("noslow")
+                ? noSlow.computeIfAbsent(player.getUUID(), ignored -> new NoSlowCheck()).check(player,
+                    ConfigManager.get().decimal("noslow", "max_horizontal_per_tick", 0.22))
+                : Optional.empty();
 
-        Optional<String> violation = flight.isPresent() ? flight : speed.isPresent() ? speed : water;
-        String checkId = flight.isPresent() ? "flight" : speed.isPresent() ? "speed" : "jesus";
+        Optional<String> violation = flight.isPresent() ? flight : speed.isPresent() ? speed
+                : water.isPresent() ? water : noSlowViolation;
+        String checkId = flight.isPresent() ? "flight" : speed.isPresent() ? "speed"
+                : water.isPresent() ? "jesus" : "noslow";
         if (violation.isPresent()) {
             flag(player, checkId, violation.get());
         }
+    }
+
+    /** Runs after vanilla has moved the player packet onto the server thread. */
+    public boolean onMovementPacket(ServerPlayer player, ServerboundMovePlayerPacket packet) {
+        if (!active() || !ConfigManager.get().isEnabled("nofall")) return false;
+        Optional<String> spoof = noFall.check(player, packet,
+                ConfigManager.get().decimal("nofall", "minimum_fall_distance", 4.0));
+        if (spoof.isEmpty()) return false;
+        flag(player, "nofall", spoof.get());
+        return ConfigManager.get().bool("nofall", "cancel_spoofed_ground_packet", true);
     }
 
     public boolean onBlockBreak(ServerPlayer player, BlockPos pos, BlockState state) {
@@ -125,7 +152,7 @@ public final class CheckManager {
         return !ConfigManager.get().bool("fastbreak", "auto_cancel", true);
     }
 
-    /** Called at packet HEAD, before vanilla handles a block interaction or placement. */
+    /** Called on the server thread before vanilla applies a block interaction or placement. */
     public boolean onBlockUse(ServerPlayer player, ServerboundUseItemOnPacket packet) {
         if (!active()) return false;
         if (ConfigManager.get().isEnabled("inventorywalk") && inventoryWalk.shouldBlock(player, ConfigManager.get().bool("inventorywalk", "allow_rotation", false))) {
@@ -162,7 +189,7 @@ public final class CheckManager {
     public void onDisconnect(UUID player) {
         violations.save();
         profiles.remove(player); flights.remove(player); speeds.remove(player); jesus.computeIfPresent(player, (id, check) -> { check.clear(id); return null; });
-        breaks.remove(player); places.remove(player); lastMovementTick.remove(player);
+        noSlow.remove(player); crystalAura.clear(player); breaks.remove(player); places.remove(player);
     }
     public void savePersistentState() { violations.save(); }
     public void savePersistentStateOnShutdown() { violations.saveNow(); }

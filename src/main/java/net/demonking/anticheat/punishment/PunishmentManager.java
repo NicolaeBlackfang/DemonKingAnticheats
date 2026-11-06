@@ -37,7 +37,7 @@ public final class PunishmentManager {
 
     private static String format(String template, ServerPlayer player, String check, double violations) {
         return template.replace("%player%", player.getGameProfile().name())
-                .replace("%check%", check)
+                .replace("%check%", CheckNames.display(check))
                 .replace("%violations%", String.format(Locale.ROOT, "%.1f", violations))
                 .replace('&', '\u00a7');
     }

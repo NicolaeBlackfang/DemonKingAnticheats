@@ -29,11 +29,12 @@ public final class SpeedCheck {
         if (gap > 250_000_000L) ignoreTimingUntilNanos = now + 750_000_000L;
         if (now < ignoreTimingUntilNanos) return Optional.empty();
         boolean exempt = p.isPassenger() || p.isFallFlying() || p.onClimbable() || p.isInWater() || p.isInLava()
-                || p.isCreative() || p.isSpectator() || p.getAbilities().flying;
+                || p.isCreative() || p.isSpectator() || p.getAbilities().flying || p.isUsingItem() || p.hurtTime > 0;
+        exempt |= p.level().getBlockState(p.blockPosition().below()).getBlock().getFriction() > 0.6F;
         if (exempt || p.isSleeping() || p.isDeadOrDying())
             return Optional.empty();
         var speed = p.getEffect(MobEffects.SPEED);
-        double effect = speed == null ? 0.0 : (speed.getAmplifier() + 1) * 0.12;
+        double effect = speed == null ? 0.0 : (speed.getAmplifier() + 1) * 0.08;
         double limit = Math.max(0.1, allowedDistance) + effect;
         double distance = Math.sqrt(dx * dx + dz * dz);
         if (DetectionRules.excessiveHorizontalMove(distance, limit))

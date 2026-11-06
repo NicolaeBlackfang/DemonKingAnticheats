@@ -36,7 +36,7 @@ public final class WebhookDispatcher {
             embed.addProperty("color", config.embedColor);
             JsonArray fields = new JsonArray();
             addField(fields, "Player", player.getGameProfile().name());
-            addField(fields, "Check", check);
+            addField(fields, "Check", CheckNames.display(check));
             addField(fields, "Violations", String.format("%.1f", violations));
             addField(fields, "Ping", ping + " ms");
             addField(fields, "Action", action);
