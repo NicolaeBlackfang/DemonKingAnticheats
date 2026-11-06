@@ -29,8 +29,7 @@ whitelist.json
 usercache.json
 banned-players.json
 banned-ips.json
-world/
-world_*/
+
 
 # Local environment and credentials
 .env
