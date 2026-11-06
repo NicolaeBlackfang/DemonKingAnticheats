@@ -1,26 +1,27 @@
-# Developer architecture
+# Internal architecture
 
-## Runtime flow
+This document is for authorized developers and AI assistants maintaining the workspace.
 
-`AntiCheatMod` initializes the server config, one `CheckManager`, event callbacks, and the version-specific startup banner. The movement mixin observes `ServerPlayNetworkHandler.onPlayerMove` at `TAIL`, after vanilla has validated/applied the movement packet. The manager dispatches bounded checks on the server thread. Fabric's `AttackEntityCallback` observes attacks before the target interaction is processed. `PlayerBlockBreakEvents.BEFORE` can cancel a suspicious break by returning `false`.
+## Single-project layout
 
-Current event paths:
+The root Gradle project builds the configured Minecraft release. Java sources under `src/main/java` contain the mod entrypoint, check orchestration, individual checks, configuration, violation tracking, punishment and notification handlers, and the packet-handler mixin. `src/main/resources` carries Fabric metadata and the mixin configuration. The default target is 26.1.2 with Fabric Loom's official named classes and Java 25. The standard `jar` task is the production artifact; no matrix collector or version subprojects are involved.
 
-1. Movement packet -> mixin -> `CheckManager.onMovement` -> flight and speed checks.
-2. Entity attack callback -> manager -> reach and attack cadence checks.
-3. Block break BEFORE callback -> manager -> fast-break heuristic -> cancel or allow.
-4. Check result -> per-player/check violation level with time-based decay -> staff notification -> configured punishment router.
+## Runtime data flow
 
-Live Minecraft world/entity state is thread-confined. These checks remain on the server thread and must be bounded; do not run packet handlers asynchronously. If expensive analysis is added, capture immutable primitives on-thread and bound work in a background queue, then schedule any player/world action back onto the server thread.
+- `AntiCheatMod` loads `config/demonkinganticheats.json`, initializes `CheckManager`, emits the first-run ANSI banner, and registers Fabric callbacks for attacks, block breaks, disconnects, and server shutdown.
+- `ServerGamePacketListenerMixin` injects at the tail of the server movement packet handler. It sends the accepted player state to `CheckManager.onMovement`.
+- `CheckManager` gates processing on the global and per-check configuration, keeps per-player state for movement and break checks, and invokes the combat checks.
+- `DetectionRules` contains small pure threshold decisions. Check implementations return optional violation descriptions rather than mutating the server directly.
+- `ViolationTracker` applies time-based decay. `NotificationHandler` alerts operators and `PunishmentHandler` applies configured warning or disconnect behavior.
 
-## Mixins and version adapters
+## Injection and cancellation
 
-The current implementation is pinned to Yarn 1.21.1 mappings. The packet mixin shadows `ServerPlayNetworkHandler.player` and injects into `onPlayerMove(PlayerMoveC2SPacket)` at `TAIL`. Injection signatures, shadow names, descriptors, and event APIs must be reviewed per Minecraft line. Keep version-specific hooks behind source adapters/profile directories; do not assume a binary compiled against 1.21.1 runs on later releases.
+The movement mixin observes packet handling after vanilla's handler. It does not cancel vanilla movement; current movement checks report violations only. `AttackEntityCallback` observes server-side player attacks and returns PASS. `PlayerBlockBreakEvents.BEFORE` can cancel a break when Fast Break flags it. Disconnect removes per-player state, and server stopping saves config. If a check is added, prefer Fabric events; introduce a mixin only when no suitable event exists and document the target descriptor and ordering.
 
-Minecraft 26.3 has a distinct toolchain and API surface. Fabric's current version selector provides the release-specific dependencies; at the time this document was updated it reports Loader 0.20.1, Loom 1.19-SNAPSHOT, Fabric API 0.162.0+26.3. Java 25 is required by the current upstream example metadata. Always re-check official version data before a release. (Fabric 26.3 release notes and version selector are linked in the admin README.)
+## Performance notes
 
-## Cancellation and limits
+Per-player check state is keyed by UUID and cleared on disconnect. Keep hot callbacks allocation-light; avoid disk I/O, blocking work, or expensive world scans in packet and interaction callbacks. Use bounded per-player state and deterministic short-circuit conditions. Any async work must return to the server thread before touching game state.
 
-Only the fast-break path currently cancels gameplay. Reach/attack cadence are detected from server attack events but do not cancel the attack directly. Movement is sampled after vanilla's packet handling and is observational; correction/cancellation needs a narrowly tested injection before state application. Never cancel a vanilla packet based only on one noisy heuristic.
+## Current limits
 
-The config declares all 57 supplied names, but only five have concrete check implementations. Server-only software cannot reliably detect purely client-rendered visuals such as ESP, Chams, Tracers, or Fullbright without client cooperation or gameplay changes. Behavior labels such as AimAssist, Baritone, Auto-* and Scaffold often have legitimate equivalents; reliable flags require multiple corroborating signals and false-positive testing. Unsupported config entries are inert.
+Five checks have active logic: Flight, Speed, Reach, rapid attack cadence, and Fast Break. Other config IDs are placeholders. Server-only code cannot inspect client rendering directly. The movement callback sees server-processed state and is not a raw client telemetry feed. Treat checks as heuristics and tune conservative thresholds.

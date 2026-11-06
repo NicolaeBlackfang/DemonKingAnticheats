@@ -1,13 +1,14 @@
 package com.anticheat.checks.movement;
-import net.minecraft.server.network.ServerPlayerEntity;
+import com.anticheat.checks.DetectionRules;
+import net.minecraft.server.level.ServerPlayer;
 import java.util.Optional;
 public final class FlightCheck {
     private int airTicks;
-    public Optional<String> check(ServerPlayerEntity p) {
-        boolean exempt = p.getAbilities().allowFlying || p.isFallFlying() || p.hasVehicle() || p.isTouchingWater() || p.isInLava() || p.isClimbing() || p.isSleeping() || p.isCreative() || p.isSpectator();
-        if (exempt || p.isOnGround()) { airTicks = 0; return Optional.empty(); }
+    public Optional<String> check(ServerPlayer p) {
+        boolean exempt = p.getAbilities().mayfly || p.isFallFlying() || p.isPassenger() || p.isInWater() || p.isInLava() || p.onClimbable() || p.isSleeping() || p.isCreative() || p.isSpectator();
+        if (exempt || p.onGround()) { airTicks = 0; return Optional.empty(); }
         airTicks++;
-        if (airTicks > 45 && Math.abs(p.getVelocity().y) < 0.005) return Optional.of("prolonged unsupported hover");
+        if (DetectionRules.unsupportedHover(airTicks, p.getDeltaMovement().y)) return Optional.of("prolonged unsupported hover");
         return Optional.empty();
     }
 }

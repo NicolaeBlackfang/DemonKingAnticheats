@@ -1,1 +1,7 @@
-{"required":true,"package":"com.anticheat.mixin","compatibilityLevel":"JAVA_21","mixins":["ServerPlayNetworkHandlerMixin"],"injectors":{"defaultRequire":1}}
+{
+  "required": true,
+  "package": "com.anticheat.mixin",
+  "compatibilityLevel": "${javaMixinLevel}",
+  "mixins": ["ServerGamePacketListenerMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

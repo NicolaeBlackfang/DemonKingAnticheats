@@ -1,13 +1,53 @@
-plugins { id 'fabric-loom' version '1.8.13' }
-version = project.mod_version
-group = project.maven_group
-base { archivesName = project.archives_base_name }
-dependencies {
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.19.3'
 }
-processResources { inputs.property 'version', project.version; filesMatching('fabric.mod.json') { expand 'version': project.version } }
-java { toolchain { languageVersion = JavaLanguageVersion.of(21) }; withSourcesJar() }
-tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
+
+group = 'com.anticheat'
+version = providers.gradleProperty('mod_version').get()
+base {
+    archivesName = "DemonKingAntiCheats-mc${providers.gradleProperty('minecraft_version').get()}"
+}
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+}
+
+def javaVersion = providers.gradleProperty('java_version').get().toInteger()
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(javaVersion) }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaVersion
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${providers.gradleProperty('minecraft_version').get()}"
+    implementation "net.fabricmc:fabric-loader:${providers.gradleProperty('loader_version').get()}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty('fabric_version').get()}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', providers.gradleProperty('minecraft_version').get()
+    filesMatching('fabric.mod.json') {
+        expand(version: project.version, minecraft_version: providers.gradleProperty('minecraft_version').get(), loader_version: providers.gradleProperty('loader_version').get())
+    }
+    filesMatching('demonkinganticheats.mixins.json') {
+        expand(javaMixinLevel: javaVersion >= 25 ? 'JAVA_25' : 'JAVA_21')
+    }
+}
+
+jar {
+    archiveFileName = "DemonKingAntiCheats-mc${providers.gradleProperty('minecraft_version').get()}-${project.version}.jar"
+}
+
+// This project targets the official named classes for Minecraft 26.1.2, so the ordinary jar is final.
+
+// This proprietary distribution provides compiled mod binaries only; do not create a source archive.
+tasks.matching { it.name == 'sourcesJar' }.configureEach {
+    enabled = false
+}

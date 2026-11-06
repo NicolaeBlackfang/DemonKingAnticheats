@@ -1,38 +1,33 @@
-# Gradle and generated outputs
+# Gradle / Loom outputs and caches
 .gradle/
+.loom/
 build/
 **/build/
-*.jar
-!releases/**/*.jar
-!releases/**/.gitkeep
 
-# IDEs and editor metadata
+# Local development servers and run configs
+run/
+logs/
+*.log
+server.properties
+world/
+world_*/
+
+# IDE / editor files
 .idea/
 *.iml
 .vscode/
 .settings/
 .classpath
 .project
-
-# Compiled classes and local scratch
 bin/
 out/
-*.class
-*.log
-logs/
-
-# Local development runs and server data
-run/
-server.properties
-world/
-world_*/
-usercache.json
-usernamecache.json
-ops.json
-whitelist.json
-banned-players.json
-banned-ips.json
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Ignore generated jars except manually curated release binaries and wrapper
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+!releases/**/*.jar
+!releases/**/.gitkeep

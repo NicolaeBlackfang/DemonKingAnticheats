@@ -5,11 +5,12 @@ import com.anticheat.handler.*;
 import com.anticheat.checks.combat.*;
 import com.anticheat.checks.movement.*;
 import com.anticheat.checks.world.FastBreakCheck;
-import net.minecraft.block.BlockState;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.BlockPos;
 import java.util.*;
 public final class CheckManager {
+    private static final List<String> IMPLEMENTED_CHECKS = List.of("flight", "speed", "reach", "killAura", "fastBreak");
     private final ViolationTracker tracker=new ViolationTracker();
     private final NotificationHandler notifications=new NotificationHandler();
     private final PunishmentHandler punishments;
@@ -19,29 +20,35 @@ public final class CheckManager {
     private final ReachCheck reach=new ReachCheck();
     private final KillAuraCheck aura=new KillAuraCheck();
     public CheckManager(PunishmentHandler punishments) { this.punishments=punishments; }
-    public void onMovement(ServerPlayerEntity p) {
-        if (!active()) return;
-        flight.computeIfAbsent(p.getUuid(),k->new FlightCheck()).check(p).ifPresent(d->flag(p,"flight",d));
-        speed.computeIfAbsent(p.getUuid(),k->new SpeedCheck()).check(p).ifPresent(d->flag(p,"speed",d));
+    public int activeCheckCount() {
+        return (int) IMPLEMENTED_CHECKS.stream().filter(id -> {
+            var options = option(id);
+            return options != null && options.enabled;
+        }).count();
     }
-    public void onAttack(ServerPlayerEntity a, ServerPlayerEntity v) {
+    public void onMovement(ServerPlayer p) {
+        if (!active()) return;
+        flight.computeIfAbsent(p.getUUID(),k->new FlightCheck()).check(p).ifPresent(d->flag(p,"flight",d));
+        speed.computeIfAbsent(p.getUUID(),k->new SpeedCheck()).check(p).ifPresent(d->flag(p,"speed",d));
+    }
+    public void onAttack(ServerPlayer a, ServerPlayer v) {
         if (!active()) return;
         var r=option("reach"); if(r!=null && r.enabled) reach.check(a,v,r.maxReach).ifPresent(d->flag(a,"reach",d));
         aura.check(a,v).ifPresent(d->flag(a,"killAura",d));
     }
-    public boolean onBlockBreak(ServerPlayerEntity p, BlockPos pos, BlockState state) {
+    public boolean onBlockBreak(ServerPlayer p, BlockPos pos, BlockState state) {
         if(!active()) return true;
-        return breaks.computeIfAbsent(p.getUuid(),k->new FastBreakCheck()).check(p,pos,state).map(d->{flag(p,"fastBreak",d); return false;}).orElse(true);
+        return breaks.computeIfAbsent(p.getUUID(),k->new FastBreakCheck()).check(p,pos,state).map(d->{flag(p,"fastBreak",d); return false;}).orElse(true);
     }
     public void onDisconnect(UUID player) {
         tracker.clear(player); flight.remove(player); speed.remove(player); breaks.remove(player); aura.clear(player);
     }
     private boolean active(){return ConfigManager.get().general.enabled;}
     private com.anticheat.config.ModConfig.CheckOptions option(String id){return ConfigManager.get().checks.get(id);}
-    private void flag(ServerPlayerEntity p,String id,String detail){
+    private void flag(ServerPlayer p,String id,String detail){
         var cfg=option(id); if(cfg==null || !cfg.enabled) return;
-        double vl=tracker.add(p.getUuid(),id,1,ConfigManager.get().general.decayRatePerMinute);
-        notifications.alert(p.getServer(),p,id,vl,detail);
+        double vl=tracker.add(p.getUUID(),id,1,ConfigManager.get().general.decayRatePerMinute);
+        notifications.alert(p.level().getServer(),p,id,vl,detail);
         if(vl>=Math.max(1,cfg.threshold)) punishments.apply(p,id,cfg.punishment,vl);
     }
 }
