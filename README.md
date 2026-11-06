@@ -1,6 +1,6 @@
 # Demon King Anti-Cheats
 
-**Fabric server-side protection for Minecraft Java 26.1.2** · Mod version **1.0.2** · Java **25**
+**Fabric server-side protection for Minecraft Java 26.1.2** · Mod version **1.0.3** · Java **25**
 
 Demon King Anti-Cheats checks selected server-visible combat, movement, and block-interaction behavior. Detection hooks run on the authoritative server thread, with configurable violation buffering and escalating server actions.
 
@@ -10,7 +10,8 @@ Demon King Anti-Cheats checks selected server-visible combat, movement, and bloc
 
 | Minecraft server | Mod version | Required server dependencies | Download |
 | --- | --- | --- | --- |
-| **26.1.2** | **1.0.2** (latest) | Fabric Loader 0.20.1+ and Fabric API 0.155.3+26.1.2 | [DemonKingAntiCheats-mc26.1.2-1.0.2.jar](releases/26.1.2/DemonKingAntiCheats-mc26.1.2-1.0.2.jar) |
+| **26.1.2** | **1.0.3** (latest) | Fabric Loader 0.20.1+ and Fabric API 0.155.3+26.1.2 | [DemonKingAntiCheats-mc26.1.2-1.0.3.jar](releases/26.1.2/DemonKingAntiCheats-mc26.1.2-1.0.3.jar) |
+| **26.1.2** | 1.0.2 (previous) | Fabric Loader 0.20.1+ and Fabric API 0.155.3+26.1.2 | [DemonKingAntiCheats-mc26.1.2-1.0.2.jar](releases/26.1.2/DemonKingAntiCheats-mc26.1.2-1.0.2.jar) |
 | **26.1.2** | 1.0.1 (previous) | Fabric Loader 0.20.1+ and Fabric API 0.155.3+26.1.2 | [DemonKingAntiCheats-mc26.1.2-1.0.1.jar](releases/26.1.2/DemonKingAntiCheats-mc26.1.2-1.0.1.jar) |
 | **26.1.2** | 1.0.0 (previous) | Matching Fabric Loader and Fabric API for 26.1.2 | [DemonKingAntiCheats-mc26.1.2-1.0.0.jar](releases/26.1.2/DemonKingAntiCheats-mc26.1.2-1.0.0.jar) |
 | **1.21.1** | 1.0.0 (archived) | Matching Fabric Loader and Fabric API for 1.21.1 | [DemonKingAntiCheats-mc1.21.1-1.0.0.jar](releases/1.21.1/DemonKingAntiCheats-mc1.21.1-1.0.0.jar) |
@@ -20,7 +21,7 @@ Choose the row matching your exact server version. The 1.21.1 jar is an archived
 ## Installation
 
 1. Install a dedicated Minecraft 26.1.2 server with Java 25, Fabric Loader, and Fabric API 0.155.3+26.1.2.
-2. Stop the server and copy `DemonKingAntiCheats-mc26.1.2-1.0.2.jar` into the server's `mods/` directory.
+2. Stop the server and copy `DemonKingAntiCheats-mc26.1.2-1.0.3.jar` into the server's `mods/` directory.
 3. Start the server. The mod prints its colored startup banner and creates `config/demonkinganticheats.json` on first run.
 4. Review the configuration, restart the server, and monitor alerts before enabling punitive escalation on a production server.
 
@@ -47,7 +48,9 @@ These are heuristics and safeguards, not proof of cheating. Client-only aim assi
 
 ## Configuration
 
-Stop the server before editing `config/demonkinganticheats.json`. The checked-in file is a safe template; first run writes an equivalent file into the server's config directory. The schema includes only the active checks, each enabled by default, plus the punishment ladder.
+Stop the server before editing `config/demonkinganticheats.json`. The checked-in file is bundled into the jar and is the source of truth for generated defaults. First run writes it to the server's config directory; upgrades add newly supported options while keeping valid administrator values. The schema includes only active checks, each enabled by default, plus the punishment ladder.
+
+Config schema version 5 validates option types and clamps numeric settings to supported ranges. If the JSON is malformed, the mod saves a `.bak` copy and regenerates safe defaults instead of aborting startup.
 
 ### Per-check tuning
 
@@ -87,7 +90,7 @@ Authorized maintainers with JDK 25 can run:
 ./gradlew clean build
 ```
 
-The jar is generated at `build/libs/DemonKingAntiCheats-mc26.1.2-1.0.2.jar`. See [the developer build guide](docs/maintainer_builds.md) before changing Minecraft versions; a version-property change alone does not port Minecraft APIs.
+The jar is generated at `build/libs/DemonKingAntiCheats-mc26.1.2-1.0.3.jar`. See [the developer build guide](docs/maintainer_builds.md) before changing Minecraft versions; a version-property change alone does not port Minecraft APIs.
 
 ## License and source
 

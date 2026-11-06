@@ -78,7 +78,7 @@ public final class CheckManager {
         int attackerPing = Math.max(0, attacker.connection.latency());
         int targetPing = target instanceof ServerPlayer victim ? Math.max(0, victim.connection.latency()) : 0;
         if (Math.max(attackerPing, targetPing) < UNRELIABLE_RTT_MS && ConfigManager.get().isEnabled("killaura")) {
-            double reachSetting = ConfigManager.get().decimal("killaura", "max_reach", 3.05);
+            double reachSetting = ConfigManager.get().decimal("killaura", "max_reach", 3.1);
             Optional<String> aura = killaura.check(attacker, target,
                     ConfigManager.get().decimal("killaura", "max_angle_delta", 60.0), reachSetting,
                     ConfigManager.get().bool("killaura", "check_reach", true),
@@ -91,7 +91,7 @@ public final class CheckManager {
             }
         }
         if (target instanceof ServerPlayer victim && Math.max(attackerPing, targetPing) < UNRELIABLE_RTT_MS && ConfigManager.get().isEnabled("reach")) {
-            double maxReach = ConfigManager.get().decimal("reach", "max_reach", 3.2);
+            double maxReach = ConfigManager.get().decimal("reach", "max_reach", 3.05);
             Optional<String> reachViolation = reach.check(attacker, victim, maxReach);
             if (reachViolation.isPresent()) {
                 boolean registered = flag(attacker, "reach", reachViolation.get());

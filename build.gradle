@@ -31,6 +31,9 @@ dependencies {
 }
 
 processResources {
+    from('config') {
+        include 'demonkinganticheats.json'
+    }
     inputs.property 'version', project.version
     inputs.property 'minecraft_version', providers.gradleProperty('minecraft_version').get()
     filesMatching('fabric.mod.json') {

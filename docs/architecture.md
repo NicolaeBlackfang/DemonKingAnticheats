@@ -7,7 +7,7 @@ For authorized developers and AI assistants maintaining this proprietary mod.
 This single Gradle project builds Minecraft 26.1.2 / Java 25 using official named classes. Sources use `net.demonking.anticheat`:
 
 - `DemonKingAntiCheat` registers Fabric events, the server tick check loop, and the ANSI startup banner.
-- `config` loads and normalizes the versioned JSON schema. Every check has its own JSON object, so parameters can be check-specific.
+- `config` loads the bundled workspace JSON as the canonical default, merges valid administrator values, normalizes option types/ranges, and writes the versioned server config. Every check has its own JSON object.
 - `model` contains persistent decaying violation levels and per-session token buffers.
 - `punishment` applies the configured ladder, timed/permanent server bans, messages, staff notifications, and asynchronous Discord embeds.
 - `checks` contains isolated checks and the event router. The network mixin hooks movement, attacks, and use-on-block packets after Minecraft's thread handoff.
